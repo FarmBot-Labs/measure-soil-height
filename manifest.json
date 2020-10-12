@@ -1,0 +1,25 @@
+{
+  "package": "Measure Soil Height",
+  "language": "python",
+  "author": "FarmBot, Inc.",
+  "description": "Measure soil z height at the current position.",
+  "farmware_manifest_version": "2.0.0",
+  "package_version": "1.0.0",
+  "farmbot_os_version_requirement": ">=8.0.0",
+  "url": "https://raw.githubusercontent.com/FarmBot-Labs/measure-soil-height/main/manifest.json",
+  "zip": "https://github.com/FarmBot-Labs/measure-soil-height/archive/main.zip",
+  "executable": "python",
+  "args": "measure-soil-height-main/measure_height.py",
+  "config": {
+    "0": {
+      "name": "measured_distance",
+      "label": "Measured distance from camera to soil during initial calibration (required input)",
+      "value": 0
+    },
+    "1": {
+      "name": "calibration_factor",
+      "label": "Calibration factor result",
+      "value": 0
+    }
+  }
+}
