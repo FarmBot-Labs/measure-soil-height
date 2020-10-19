@@ -4,7 +4,7 @@
   "author": "FarmBot, Inc.",
   "description": "Measure soil z height at the current position.",
   "farmware_manifest_version": "2.0.0",
-  "package_version": "1.0.0",
+  "package_version": "1.1.1",
   "farmbot_os_version_requirement": ">=8.0.0",
   "url": "https://raw.githubusercontent.com/FarmBot-Labs/measure-soil-height/main/manifest.json",
   "zip": "https://github.com/FarmBot-Labs/measure-soil-height/archive/main.zip",
@@ -13,13 +13,43 @@
   "config": {
     "0": {
       "name": "measured_distance",
-      "label": "Measured distance from camera to soil during initial calibration (required input)",
+      "label": "(required) Measured distance from camera to soil during initial calibration",
       "value": 0
     },
     "1": {
+      "name": "disparity_search_depth",
+      "label": "Disparity search depth",
+      "value": 1
+    },
+    "2": {
+      "name": "disparity_block_size",
+      "label": "Disparity block size (odd, 5 - 255)",
+      "value": 15
+    },
+    "3": {
+      "name": "camera_port",
+      "label": "Camera port",
+      "value": 0
+    },
+    "4": {
       "name": "calibration_factor",
       "label": "Calibration factor result",
       "value": 0
+    },
+    "5": {
+      "name": "calibration_image_width",
+      "label": "Image width during calibration",
+      "value": 0
+    },
+    "6": {
+      "name": "calibration_image_height",
+      "label": "Image height during calibration",
+      "value": 0
+    },
+    "7": {
+      "name": "verbose",
+      "label": "Verbosity",
+      "value": 2
     }
   }
 }

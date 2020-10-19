@@ -1,1 +1,6 @@
 *.pyc
+results
+test_images
+*.png
+*.jpg
+*.svg
