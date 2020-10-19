@@ -22,15 +22,19 @@ class Results():
     def set_calibration_factor(self, factor, height, width):
         'Save calculated calibration factor.'
         farmware_name = self.settings['farmware_name']
-        set_config_value(farmware_name, 'calibration_factor', factor)
-        set_config_value(farmware_name, 'calibration_image_width', width)
-        set_config_value(farmware_name, 'calibration_image_height', height)
-        self.settings['calibration_factor'] = factor
+        configs = {
+            'calibration_factor': factor,
+            'calibration_image_width': width,
+            'calibration_image_height': height,
+        }
         farmware_name_lower = farmware_name.lower().replace(' ', '_')
-        self.saved['farmware_env'].append({
-            'key': f'{farmware_name_lower}_calibration_factor',
-            'value': factor,
-        })
+        for key, value in configs.items():
+            set_config_value(farmware_name, key, value)
+            self.saved['farmware_env'].append({
+                'key': f'{farmware_name_lower}_{key}',
+                'value': value,
+            })
+        self.settings['calibration_factor'] = factor
 
     def save_soil_height(self, soil_z):
         'Save soil height.'

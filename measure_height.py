@@ -37,18 +37,22 @@ class MeasureSoilHeight():
         location_capture_count = self.settings['capture_count_at_each_location']
         repeat_capture_delay = self.settings['repeat_capture_delay_s']
 
-        self.log.debug('Capturing left image...')
-        self.images['left'].append(self.capture(port, timestamp))
+        image_order = ['left', 'right']
+        if self.settings['reverse_image_order']:
+            image_order = image_order[::-1]
+
+        self.log.debug(f'Capturing {image_order[0]} image...')
+        self.images[image_order[0]].append(self.capture(port, timestamp))
         for _ in range(location_capture_count - 1):
             sleep(repeat_capture_delay)
-            self.images['left'].append(self.capture(port, timestamp))
+            self.images[image_order[0]].append(self.capture(port, timestamp))
 
         device.move_relative(x=0, y=y_offset, z=0, speed=100)
 
-        self.log.debug('Capturing right image...')
+        self.log.debug(f'Capturing {image_order[1]} image...')
         for _ in range(location_capture_count):
             sleep(repeat_capture_delay)
-            self.images['right'].append(self.capture(port, timestamp))
+            self.images[image_order[1]].append(self.capture(port, timestamp))
 
         self.log.debug('Returning to starting position...')
         device.move_relative(x=0, y=-y_offset, z=0, speed=100)

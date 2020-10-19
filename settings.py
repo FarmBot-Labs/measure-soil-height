@@ -52,16 +52,17 @@ class Settings():
 
         self.settings['farmware_name'] = self.farmware_name
 
-        rotation_key = 'CAMERA_CALIBRATION_total_rotation_angle'
-        self.settings['rotation'] = float(os.getenv(rotation_key, '0'))
+        for key in manifest_configs.keys():
+            self.settings[key] = self._get_config(key)
 
         width_key = 'take_photo_width'
         height_key = 'take_photo_height'
         self.settings['capture_width'] = float(os.getenv(width_key, '640'))
         self.settings['capture_height'] = float(os.getenv(height_key, '480'))
 
-        for key in manifest_configs.keys():
-            self.settings[key] = self._get_config(key)
+        rotation_key = 'CAMERA_CALIBRATION_total_rotation_angle'
+        rotation_angle = float(os.getenv(rotation_key, '0'))
+        self.settings['rotation'] = rotation_angle
 
         firmware_params = device.get_bot_state().get('mcu_params', {})
         self.settings['negative_z'] = firmware_params.get(

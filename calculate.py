@@ -95,11 +95,16 @@ class Calculate():
         current_z = float(self.settings['initial_position'].get('z', 0))
         return int(current_z + z_sign * distance)
 
+    def _rotation_angle(self):
+        initial_rotation = self.settings['rotation']
+        rotation_adjustment = self.settings['rotation_adjustment']
+        return initial_rotation + rotation_adjustment
+
     def _preprocess(self, image):
         gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
         blur = odd(self.settings['blur'])
         blurred = cv.medianBlur(gray, blur) if blur else gray
-        rotated = rotate(blurred, self.settings['rotation'])
+        rotated = rotate(blurred, self._rotation_angle())
         return rotated
 
     def _combine_disparity(self, stereo):
@@ -160,12 +165,12 @@ class Calculate():
         self._colorize_disparity()
 
         base_img = self.base_image['data']
-        rotation = self.settings['rotation']
         if self.settings['verbose'] > 2:
-            unrotated = rotate(images['depth_map_bw'], -rotation)
+            unrotated = rotate(images['depth_map_bw'], -self._rotation_angle())
             self._save_image('depth_map_bw', unrotated)
         if self.settings['verbose'] > 3:
-            unrotated = rotate(images['disparity_map'], -rotation)
+            unrotated = rotate(
+                images['disparity_map'], -self._rotation_angle())
             self._save_image('disparity_map', unrotated)
             calculate_soil_z = self.calculate_soil_z
             histogram = Histogram(data, reduced, calculate_soil_z).generate()
@@ -174,7 +179,7 @@ class Calculate():
                                  calculate_soil_z, simple=True).generate()
             self._save_image('img_histogram', img_hist)
         alpha = self.settings['image_blend_percent'] / 100.
-        color_dp = rotate(images['disparity_map'], -rotation)
+        color_dp = rotate(images['disparity_map'], -self._rotation_angle())
         img = cv.addWeighted(base_img, alpha, color_dp, 1 - alpha, 0)
         if self.settings['verbose'] > 1 and not self.settings['verbose'] == 3:
             self._save_image('depth_map', img)
