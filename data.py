@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.8
 
-'Data for MeasureSoilHeight.'
+'Data.'
 
 import json
 from copy import deepcopy
@@ -10,9 +10,9 @@ import numpy as np
 class Data():
     'Reduce data.'
 
-    def __init__(self, data, tag, settings):
+    def __init__(self, data, info, settings):
         self.data = data
-        self.tag = tag
+        self.info = info
         self.settings = settings
         self.reduced = {'masks': {}, 'stats': {}, 'history': []}
         self.report = None
@@ -74,7 +74,7 @@ class Data():
         mean, sigma = self._mask_stats(self.data > threshold)
         self._add_calculated(mean, sigma)
 
-        if self.tag != 'disparity':
+        if self.info.get('tag') != 'disparity':
             return
 
         new_mean, new_sigma, top = self._find_highest_bin(mean, sigma)
@@ -99,7 +99,7 @@ class Data():
     def data_content_report(self):
         'Return report, percent pixels above threshold, and average pixel value.'
         stats = self.reduced['stats']
-        report = f'{self.tag}: '
+        report = f'{self.info.get("tag")}: '
         report += f'{stats["thresh_size_p"]}% > {stats["threshold"]}, '
         report += f'average value: {stats["mid"]:.0f}, '
         report += f'{stats["low"]:.0f} < {stats["mid_size_p"]}% < {stats["high"]:.0f}'
@@ -111,7 +111,7 @@ class Data():
         if self.settings['verbose'] > 2:
             counts = np.bincount(self.data.flatten() + 16)
             top_5 = np.argsort(counts)[::-1][:5]
-            top_values = {'name': self.tag, 'top_values': {}}
+            top_values = {'name': self.info.get('tag'), 'top_values': {}}
             for pixel_value in top_5:
                 val_percent = f'{counts[pixel_value] / self.data.size * 100:.1f}%'
                 top_values['top_values'][int(pixel_value)] = val_percent

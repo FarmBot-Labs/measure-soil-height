@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.8
 
-'Logging for MeasureSoilHeight.'
+'Logging.'
 
 import sys
 from farmware_tools import device
@@ -11,11 +11,17 @@ class Log():
 
     def __init__(self, settings):
         self.settings = settings
+        self.sent = []
 
     def log(self, message, type_=None, channels=None):
         'Log a message.'
         if self.settings['verbose'] > 0:
             device.log(message, type_, channels)
+            self.sent.append({
+                'message': message,
+                'type': type_,
+                'channels': channels,
+            })
 
     def debug(self, message):
         'Send error message.'
@@ -25,4 +31,5 @@ class Log():
     def error(self, message):
         'Send error message.'
         self.log(message, 'error')
-        sys.exit(1)
+        if self.settings['exit_on_error']:
+            sys.exit(1)

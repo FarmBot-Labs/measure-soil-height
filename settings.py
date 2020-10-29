@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.8
 
-'Settings initialization for MeasureSoilHeight.'
+'Settings initialization.'
 
 import os
 import json
@@ -11,13 +11,25 @@ DEFAULTS = {
     'disparity_coverage_threshold': 2,
     'pixel_value_threshold': 1,
     'repeat_capture_delay_s': 3,
-    'image_offset_mm': 5,
+    'stereo_y': 10,
+    'set_offset_mm': 50,
+    'number_of_stereo_sets': 2,
+    'force_sets': False,
+    'movement_speed_percent': 50,
     'blur': 0,
     'soil_height_point_radius': 0,
     'edit_fbos_config': False,
     'capture_count_at_each_location': 1,
     'image_blend_percent': 50,
     'wide_sigma_threshold': 10,
+    'image_annotate_soil_z': False,
+    'capture_only': False,
+    'exit_on_error': True,
+    'use_serial': False,
+    'serial_port': '/dev/ttyUSB0',
+    'serial_baud_rate': 115200,
+    'serial_reset_position': False,
+    'use_lights': False,
 }
 
 with open('manifest.json', 'r') as manifest_file:
@@ -48,7 +60,8 @@ class Settings():
     def _init(self):
         'Load settings from env and state.'
         for key, default in DEFAULTS.items():
-            self.settings[key] = self._get_unlisted_config(key, default)
+            type_ = str if key in ['serial_port'] else int
+            self.settings[key] = self._get_unlisted_config(key, default, type_)
 
         self.settings['farmware_name'] = self.farmware_name
 
@@ -84,7 +97,7 @@ class Settings():
     def save(self, directory):
         'Save settings to file.'
         settings = self.settings
-        if settings['verbose'] > 3 and settings['images_dir'] == 'results':
+        if settings['verbose'] > 4 and settings['images_dir'] == 'results':
             name = self.settings.get('image_base_name')
             name = name + '_' if name is not None else ''
             if not os.path.exists(directory):

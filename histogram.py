@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.8
 
 'Generate histogram.'
 
@@ -25,19 +25,21 @@ def normalize(data, range_max, new_width, range_min=0):
 class Histogram():
     'Generate histogram.'
 
-    def __init__(self, data, reduced, calc_soil_z, simple=False):
+    def __init__(self, image_data, calc_soil_z, simple=False):
         self.simple = simple
         self.calc_soil_z = calc_soil_z
+        data = image_data.data
+        self.reduced = image_data.reduced
         self.data = {
             'data': data,
-            'mid': data[reduced['masks']['mid']],
+            'mid': data[self.reduced['masks']['mid']],
         }
         try:
-            prev_mid = data[reduced['history'][-2]['masks']['mid']]
+            prev_mid = data[self.reduced['history'][-2]['masks']['mid']]
         except IndexError:
             prev_mid = self.data['mid']
         self.data['prev_mid'] = prev_mid
-        self.stats = reduced['stats']
+        self.stats = self.reduced['stats']
         self.params = {
             'min': data.min() - (2 if simple else 100),
             'max': data.max() + (2 if simple else 100),
@@ -48,6 +50,7 @@ class Histogram():
         size = (self.params['height'], self.params['width'], 3)
         background_color = BLACK
         self.histogram = np.full(size, background_color, np.uint8)
+        self.generate()
 
     def bin_color(self, i, bins, counts, color):
         'Get bin color.'
@@ -92,7 +95,7 @@ class Histogram():
         hist_x = normalize(
             value_x, params['max'], params['width'], params['min'])
         self.histogram[:, hist_x:(hist_x + 2)] = line['color']
-        soil_z = self.calc_soil_z(value_x)
+        soil_z, _ = self.calc_soil_z(value_x)
         within_range = self.stats['threshold'] < value_x < self.stats['max']
         plot_z = not self.simple and within_range and soil_z is not None
         soil_z_str = f' (z={soil_z})' if plot_z else ''
@@ -127,11 +130,13 @@ class Histogram():
         'Make histogram.'
         if self.simple:
             counts, bins = self.calculate_bins(self.data['data'])
+            self.generate_text_histogram(counts, bins)
             self.plot_bins(counts, bins, counts.max())
             self.plot_lines()
-            return self.histogram
+            return
         counts, bins = self.calculate_bins(self.data['mid'])
-        all_counts, _bins = self.calculate_bins(self.data['data'])
+        all_counts, all_bins = self.calculate_bins(self.data['data'])
+        self.generate_text_histogram(all_counts, all_bins)
         self.plot_bins(all_counts, bins, counts.max(), LIGHT_RED)
         self.plot_bins(counts, bins, counts.max())
         params = self.params
@@ -141,4 +146,24 @@ class Histogram():
         self.plot_bins(counts, bins, counts.max(), fill=False)
         self.plot_lines()
         self.plot_text('disparity', (int(params['width'] / 2), 20), 1)
-        return self.histogram
+
+    def generate_text_histogram(self, counts, bins):
+        'Generate histogram text data.'
+        hist_data = {}
+        normalized_counts = normalize(counts, counts.max(), 100)
+        for bin_val, count, normalized in zip(bins, counts, normalized_counts):
+            bin_end = bin_val + bins[1] - bins[0]
+            bin_str = f'{count / self.data["data"].size * 100:>5.1f}% '
+
+            def _bin_label(label, value):
+                return f' {label}={value}' if bin_val <= value <= bin_end else ''
+            bin_str += '=' * normalized
+            for key in ['threshold', 'low', 'mid', 'high', 'max']:
+                bin_str += _bin_label(key, self.stats[key])
+            for i, record in enumerate(self.reduced['history'][::-1]):
+                if i == 0:
+                    continue
+                for key in ['low', 'mid', 'high']:
+                    bin_str += _bin_label(f'{key}_{i}', record['stats'][key])
+            hist_data[f'{bin_val:6.1f} {bin_end:6.1f}'] = bin_str
+        self.reduced['histogram'] = hist_data
