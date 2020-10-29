@@ -31,6 +31,9 @@ class MeasureSoilHeight():
         camera = cv.VideoCapture(port)
         camera.set(cv.CAP_PROP_FRAME_WIDTH, self.settings['capture_width'])
         camera.set(cv.CAP_PROP_FRAME_HEIGHT, self.settings['capture_height'])
+        for _ in range(10):
+            camera.grab()
+            sleep(0.1)
         ret, image = camera.read()
         if not ret:
             self.log.error('Problem getting image.')
