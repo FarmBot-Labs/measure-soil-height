@@ -48,6 +48,7 @@ class Results():
             'radius': self.settings['soil_height_point_radius'],
             'meta': {
                 'created_by': 'measure-soil-height',
+                'at_soil_level': 'true',
                 'color': 'gray',
             },
         }
