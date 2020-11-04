@@ -13,6 +13,11 @@ from settings import Settings
 from log import Log
 
 
+def _title(text):
+    print()
+    print(f' {text} '.center(100, '='))
+
+
 def plot_test_dots(stereo_labels, factor=1):
     'Create a stereo test image pair.'
     dot_data = {'x': [10, 10, 90, 88], 'y': [10, 90, 10, 90]}
@@ -62,6 +67,7 @@ plot_test_dots(['right'], OFFSET_FACTOR)
 
 def test_measure_soil_height():
     'Test MeasureSoilHeight.'
+    _title('MeasureSoilHeight')
     os.environ['CAMERA_CALIBRATION_total_rotation_angle'] = '1'
     os.environ['measure_soil_height_measured_distance'] = '100'
     os.environ['measure_soil_height_calibration_factor'] = '1'
@@ -73,6 +79,7 @@ def test_measure_soil_height():
 
 def test_calculate(name_id, extension, settings=None, use_assert=True):
     'Test Calculate.'
+    _title(f'Calculate: <left|right>_{name_id}.{extension}')
     if settings is None:
         settings = Settings()
         settings.update('measured_distance', 250)
@@ -91,8 +98,9 @@ def test_calculate(name_id, extension, settings=None, use_assert=True):
         assert soil_z == -223, soil_z
 
 
-def test_calculate_set():
+def test_calculate_multiple():
     'Test CalculateMultiple.'
+    _title('CalculateMultiple')
     settings = Settings()
     settings.update('measured_distance', 250)
     settings.update('calibration_factor', 0)
@@ -150,4 +158,4 @@ if __name__ == '__main__':
     # test_measure_soil_height()
     test_calculate('dots_1', 'png')
     test_many('dots')
-    # test_calculate_set()
+    test_calculate_multiple()

@@ -52,13 +52,13 @@ class Plot():
         expected = self._position_from_percent(15, 88)
         self.plot = cv.circle(self.plot, expected, 5, WHITE, 2)
 
-    def line(self, slope, intercept):
+    def line(self, slope, intercept, thickness=1):
         'Add line to plot.'
         self.intercept = intercept
         self.slope = slope
         start = (0, int(intercept))
         end = (self.width, int(self.width * slope + intercept))
-        self.plot = cv.line(self.plot, start, end, WHITE)
+        self.plot = cv.line(self.plot, start, end, WHITE, thickness)
 
     def points(self, x_values, y_values, size=5, thickness=1):
         'Add points to plot.'
@@ -69,6 +69,6 @@ class Plot():
 
     def save(self, filename):
         'Save plot to file.'
-        self.plot = np.flipud(self.plot)
+        self.plot = np.flipud(self.plot).astype(np.uint8)
         self.add_labels()
         self.results.save_image(filename, self.plot)

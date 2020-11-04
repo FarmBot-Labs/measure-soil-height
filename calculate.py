@@ -47,7 +47,7 @@ class Calculate():
         initial_z = self.settings['initial_position'].get('z', 0)
         current_z = float(image_z or initial_z)
         self.z_info = {
-            'offset': abs(self.settings['calibration_measured_at_z'] - current_z),
+            'offset': self.settings['calibration_measured_at_z'] - current_z,
             'direction': -1 if self.settings['negative_z'] else 1,
             'current': current_z,
         }
@@ -103,6 +103,7 @@ class Calculate():
 
     def calculate_soil_z(self, disparity_value):
         'Calculate soil z from disparity value.'
+        calculated_soil_z = None
         measured_distance = self.settings['measured_distance']
         measured_at_z = self.settings['calibration_measured_at_z']
         measured_soil_z = self._z_at_dist(measured_distance, measured_at_z)
@@ -110,26 +111,9 @@ class Calculate():
         calibration_factor = self.settings['calibration_factor']
         current_z = self.z_info['current']
         direction = self.z_info['direction']
-        if calibration_factor == 0:
-            return None, []
-        self._validate_calibration_data()
-        disparity_delta = disparity_value - disparity_offset
-        distance = measured_distance - disparity_delta * calibration_factor
-        calculated_soil_z = self._z_at_dist(distance)
-        calcs = [''] * 4
-        calcs[0] += f'({measured_soil_z   = :<7}) = '
-        calcs[0] += f'({measured_at_z = :<7})'
-        calcs[0] += f' + {direction} * ({measured_distance = })'
-        calcs[1] += f'({disparity_delta   = :<7.1f}) = '
-        calcs[1] += f'({disparity_value = :<7}) - ({disparity_offset = })'
-        calcs[2] += f'({distance          = :<7.1f}) = '
-        calcs[2] += f'({measured_distance = :<7})'
-        calcs[2] += f' - ({disparity_delta = :.1f}) * ({calibration_factor = })'
-        calcs[3] += f'({calculated_soil_z = :<7}) = '
-        calcs[3] += f'({current_z = :<7}) + {direction} * ({distance = :.1f})'
-        details = {'calcs': calcs, 'values': {
+        values = {
             'measured_distance': measured_distance,
-            'z_offset': self.z_info['offset'],
+            'z_offset_from_measured': self.z_info['offset'],
             'new_meas_dist': measured_distance - self.z_info['offset'],
             'measured_at_z': measured_at_z,
             'measured_soil_z': measured_soil_z,
@@ -138,11 +122,29 @@ class Calculate():
             'current_z': current_z,
             'direction': direction,
             'disparity': disparity_value,
-            'disparity_delta': round(disparity_delta, 4),
-            'calc_distance': round(distance, 4),
             'calculated_soil_z': calculated_soil_z,
-        }}
-        return calculated_soil_z, details
+        }
+        calcs = [''] * 4
+        calcs[0] += f'({measured_soil_z   = :<7}) = '
+        calcs[0] += f'({measured_at_z = :<7})'
+        calcs[0] += f' + {direction} * ({measured_distance = })'
+        if calibration_factor == 0:
+            return calculated_soil_z, {'lines': calcs, 'values': values}
+        self._validate_calibration_data()
+        disparity_delta = disparity_value - disparity_offset
+        distance = measured_distance - disparity_delta * calibration_factor
+        calculated_soil_z = self._z_at_dist(distance)
+        values['disparity_delta'] = round(disparity_delta, 4)
+        values['calc_distance'] = round(distance, 4)
+        values['calculated_soil_z'] = calculated_soil_z
+        calcs[1] += f'({disparity_delta   = :<7.1f}) = '
+        calcs[1] += f'({disparity_value = :<7}) - ({disparity_offset = })'
+        calcs[2] += f'({distance          = :<7.1f}) = '
+        calcs[2] += f'({measured_distance = :<7})'
+        calcs[2] += f' - ({disparity_delta = :.1f}) * ({calibration_factor = })'
+        calcs[3] += f'({calculated_soil_z = :<7}) = '
+        calcs[3] += f'({current_z = :<7}) + {direction} * ({distance = :.1f})'
+        return calculated_soil_z, {'lines': calcs, 'values': values}
 
     def _combine_disparity(self, stereo):
         disparities = []
@@ -177,7 +179,6 @@ class Calculate():
             self.log.error('Zero disparity.')
         if self.settings['verbose'] > 1:
             self.save_output_images()
-        return self.output_images['disparity'].data.report
 
     def save_output_images(self):
         'Save un-rotated depth maps and histograms according to verbosity setting.'
@@ -241,44 +242,67 @@ class Calculate():
         if missing_measured_distance and missing_calibration_factor:
             self.log.error('Calibration measured distance input required.')
 
-        disparity = self.calculate_disparity()
-        self.log.debug(disparity['report'])
-        disparity_log = f'Average disparity: {disparity["mid"]} '
-        disparity_log += f'{disparity["coverage"]}% coverage'
-        self.log.debug(disparity_log)
-        if disparity['coverage'] < self.settings['disparity_coverage_threshold']:
-            self.log.error('Not enough disparity information. Check images.')
+        self.calculate_disparity()
+        self.disparity_debug_logs()
 
-        disparity_offset = self.settings['calibration_disparity_offset']
-        missing_disparity_offset = disparity_offset == 0
+        missing_disparity_offset = self.settings['calibration_disparity_offset'] == 0
         if missing_disparity_offset:
-            print('Saving disparity offset...')
-            self.settings['calibration_disparity_offset'] = disparity['mid']
-            self.settings['calibration_measured_at_z'] = self.z_info['current']
-            img_size = shape(self.input_images['left'][0].image)
-            self.settings['calibration_image_width'] = img_size['width']
-            self.settings['calibration_image_height'] = img_size['height']
+            self.set_disparity_offset()
         elif missing_calibration_factor:
-            print('Calculating calibration factor...')
-            disparity_difference = disparity['mid'] - disparity_offset
-            if disparity_difference == 0:
-                self.log.error('Zero disparity difference.')
-            factor = round(self.z_info['offset'] / disparity_difference, 4)
-            self.settings['calibration_factor'] = factor
+            self.set_calibration_factor()
             self.results.save_calibration()
 
         details = None
         if not missing_disparity_offset:
+            disparity = self.output_images['disparity'].data.report
             soil_z, details = self.calculate_soil_z(disparity['mid'])
-            self.log.debug('\n'.join(details['calcs']))
+            if len(details['lines']) > 0:
+                self.log.debug('\n'.join(details['lines']))
+            disparity['calculations'] = details
             if missing_calibration_factor:
-                expected_soil_z = details['values']['measured_soil_z']
-                if abs(soil_z - expected_soil_z) > 2:
-                    error_message = 'Soil height calculation error: '
-                    error_message += f'expected {expected_soil_z} got {soil_z}'
-                    self.log.error(error_message)
+                self.check_soil_z(details['values'])
             self.results.save_soil_height(soil_z)
 
             self.results.save_report(
-                self.base_name, self.output_images, self.input_images, details)
+                self.base_name, self.output_images, self.input_images)
         return details
+
+    def check_soil_z(self, values):
+        'Verify soil z height is within expected range.'
+        calculated_soil_z = values['calculated_soil_z']
+        expected_soil_z = values['measured_soil_z']
+        if abs(calculated_soil_z - expected_soil_z) > 2:
+            error_message = 'Soil height calculation error: '
+            error_message += f'expected {expected_soil_z} got {calculated_soil_z}'
+            self.log.error(error_message)
+
+    def disparity_debug_logs(self):
+        'Send disparity debug logs.'
+        disparity = self.output_images['disparity'].data.report
+        value = disparity['mid']
+        coverage = disparity['coverage']
+        self.log.debug(disparity['report'])
+        self.log.debug(f'Average disparity: {value} {coverage}% coverage')
+        if coverage < self.settings['disparity_coverage_threshold']:
+            self.log.error('Not enough disparity information. Check images.')
+
+    def set_disparity_offset(self):
+        'Set disparity offset.'
+        print('Saving disparity offset...')
+        disparity = self.output_images['disparity'].data.report['mid']
+        self.settings['calibration_disparity_offset'] = disparity
+        self.settings['calibration_measured_at_z'] = self.z_info['current']
+        img_size = shape(self.input_images['left'][0].image)
+        self.settings['calibration_image_width'] = img_size['width']
+        self.settings['calibration_image_height'] = img_size['height']
+
+    def set_calibration_factor(self):
+        'Set calibration_factor.'
+        print('Calculating calibration factor...')
+        disparity = self.output_images['disparity'].data.report['mid']
+        disparity_offset = self.settings['calibration_disparity_offset']
+        disparity_difference = disparity - disparity_offset
+        if disparity_difference == 0:
+            self.log.error('Zero disparity difference.')
+        factor = round(self.z_info['offset'] / disparity_difference, 4)
+        self.settings['calibration_factor'] = factor

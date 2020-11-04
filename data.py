@@ -29,11 +29,11 @@ class Data():
         threshold = self.settings['pixel_value_threshold']
         stats['mu'] = max(threshold + 1, mean)
         stats['sigma'] = sigma
-        stats['low'] = stats['mu'] - sigma
+        stats['low'] = round(stats['mu'] - sigma, 4)
         stats['low_size_p'] = self._percent(self.data, masks['threshold'])
         stats['mid'] = stats['mu']
         stats['mid_size_p'] = self._percent(self.data, masks['mid'])
-        stats['high'] = stats['mu'] + sigma
+        stats['high'] = round(stats['mu'] + sigma, 4)
         stats['high_size_p'] = self._percent(self.data, masks['high'])
 
         record = deepcopy(self.reduced)

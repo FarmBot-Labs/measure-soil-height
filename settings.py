@@ -66,7 +66,7 @@ class Settings():
         self.settings['farmware_name'] = self.farmware_name
 
         for key in manifest_configs.keys():
-            self.settings[key] = self._get_config(key)
+            self.settings[key] = float(self._get_config(key))
 
         width_key = 'take_photo_width'
         height_key = 'take_photo_height'

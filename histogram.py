@@ -149,7 +149,7 @@ class Histogram():
 
     def generate_text_histogram(self, counts, bins):
         'Generate histogram text data.'
-        hist_data = {}
+        hist_data = []
         normalized_counts = normalize(counts, counts.max(), 100)
         for bin_val, count, normalized in zip(bins, counts, normalized_counts):
             bin_end = bin_val + bins[1] - bins[0]
@@ -165,5 +165,5 @@ class Histogram():
                     continue
                 for key in ['low', 'mid', 'high']:
                     bin_str += _bin_label(f'{key}_{i}', record['stats'][key])
-            hist_data[f'{bin_val:6.1f} {bin_end:6.1f}'] = bin_str
+            hist_data.append(f'{bin_val:6.1f} {bin_end:6.1f}: {bin_str}')
         self.reduced['histogram'] = hist_data

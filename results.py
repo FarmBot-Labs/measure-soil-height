@@ -66,7 +66,7 @@ class Results():
         filesize = f'{os.path.getsize(filepath) / 1024.:.1f} KiB'
         self.saved['images'].append({'path': filepath, 'size': filesize})
 
-    def save_report(self, name, output_data, input_data, calcs):
+    def save_report(self, name, output_data, input_data):
         'Save reduced data to file.'
         directory = self.settings['images_dir']
         if self.settings['verbose'] > 4 and directory == 'results':
@@ -79,7 +79,7 @@ class Results():
                     'name': data.info.get('name'),
                     'tag': data.info.get('tag'),
                     'coordinates': data.info.get('location'),
-                    'calculations': calcs,
+                    'calculations': data.report.get('calculations'),
                     'top_values': data.report['top_values']['top_values'],
                     'histogram': reduced.get('histogram'),
                     'stats': reduced['stats'],

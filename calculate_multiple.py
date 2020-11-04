@@ -2,8 +2,18 @@
 
 'Perform calculations on multiple stereo image sets.'
 
+import os
+import json
 from calculate import Calculate
 from plot import Plot
+
+
+def _abridged(histogram):
+    if len(histogram) < 1:
+        return []
+    low = ['low' in h for h in histogram].index(True)
+    high = -['high' in h for h in histogram][::-1].index(True)
+    return histogram[low:high]
 
 
 class CalculateMultiple():
@@ -23,9 +33,15 @@ class CalculateMultiple():
             calculation = Calculate(self.settings, self.log, image_set)
             details = calculation.calculate()
             if details is not None:
+                disparity = calculation.output_images['disparity'].data.reduced
+                histogram_data = disparity.get('histogram', [])
+                details['histogram'] = _abridged(histogram_data)
                 self.set_results.append(details)
-            if len(self.image_sets) > 1 and self.settings['verbose'] > 1:
-                self.plot(calculation.results)
+
+        if len(self.image_sets) > 1 and self.settings['verbose'] > 1:
+            self.plot(calculation.results)
+
+        self.save_report()
 
     def plot(self, results):
         'Plot all set values.'
@@ -43,3 +59,12 @@ class CalculateMultiple():
             plot.points(disparity, distance, size=10)
             plot.points(disparity, expected, thickness=2)
             plot.save('plot')
+
+    def save_report(self):
+        'Save reduced data to file.'
+        directory = self.settings['images_dir']
+        if self.settings['verbose'] > 4 and directory == 'results':
+            if not os.path.exists(directory):
+                os.mkdir(directory)
+            with open(f'{directory}/results.json', 'w') as results_file:
+                results_file.write(json.dumps(self.set_results, indent=2))
