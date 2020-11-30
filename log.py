@@ -3,33 +3,69 @@
 'Logging.'
 
 import sys
-from farmware_tools import device
+from time import time
 
 
 class Log():
     'Log messages.'
 
-    def __init__(self, settings):
+    def __init__(self, settings, device):
         self.settings = settings
+        self.device = device
+        self.start_time = None
         self.sent = []
+        self.errors = []
 
-    def log(self, message, type_=None, channels=None):
+    def add_pre_logs(self, pre_times):
+        'Add logs created before init.'
+        self.start_time = pre_times['start']
+        times = pre_times.copy()
+        for key, log_time in times.items():
+            messages = {
+                'start': 'Standard imports complete.',
+                'imports_done': 'Imports complete.',
+            }
+            if key == 'start':
+                if 'imports_done' not in pre_times:
+                    continue
+            else:
+                pre_times.pop(key)
+            if self.settings['log_verbosity'] > 0:
+                self.debug(messages.get(key, key), log_time)
+
+    def log(self, message, log_type=None, channels=None, **kwargs):
         'Log a message.'
-        if self.settings['verbose'] > 0:
-            device.log(message, type_, channels)
+        if self.settings['log_verbosity'] > 0 or kwargs.get('error', False):
+            message = self._add_elapsed_time(message, kwargs.get('log_time'))
+            self.device.log(message, log_type, channels)
             self.sent.append({
                 'message': message,
-                'type': type_,
+                'type': log_type,
                 'channels': channels,
             })
 
-    def debug(self, message):
+    def _add_elapsed_time(self, message, log_time=None):
+        if self.settings['time']:
+            if self.start_time is None:
+                self.start_time = time()
+            if log_time is None:
+                log_time = time()
+            elapsed = log_time - self.start_time
+            msg = f'[{elapsed:8.2f}] {message}'
+            message = '\n'.join([(' ' * 11 + line if i > 0 else line)
+                                 for i, line in enumerate(msg.split('\n'))])
+        return message
+
+    def debug(self, message, log_time=None):
         'Send error message.'
-        if self.settings['verbose'] > 2:
-            self.log(message, 'debug')
+        if self.settings['log_verbosity'] > 2:
+            self.log(message, 'debug', log_time=log_time)
+        elif self.settings['log_verbosity'] > 0:
+            print(message)
 
     def error(self, message):
         'Send error message.'
-        self.log(message, 'error')
+        self.log(message, 'error', error=True)
         if self.settings['exit_on_error']:
+            self.errors.append(message)
             sys.exit(1)

@@ -2,88 +2,42 @@
 
 'Calculations.'
 
+import numpy as np
 import cv2 as cv
-from results import Results
-from image import Image, shape, odd, create_output_collage
+from process_image import shape, odd, rotate
+from images import Images
+from angle import Angle
 
 
 class Calculate():
     'Calculate results.'
 
-    def __init__(self, settings, log, images=None):
-        self.settings = settings
-        self.log = log
-        self.results = Results(settings, log)
-        self.input_images = images or {'left': [], 'right': []}
-        self.base_name = None
-        self.z_info = None
-        if images:
-            self._set_base_name()
-            self._set_z_info()
-        for stereo_id, image_infos in self.input_images.items():
-            for i, info in enumerate(image_infos):
-                image = info.pop('data')
-                if image is None:
-                    self.log.error('Image missing.')
-                self.input_images[stereo_id][i] = self.init_img(image, info)
-        self.output_images = {}
-
-    def _set_base_name(self, after_init=False):
-        left = self.input_images['left'][0]
-        if after_init:
-            left = left.info
-        base_name = left['name'].split('/')[-1]
-        if '.' in base_name:
-            base_name = '.'.join(base_name.split('.')[:-1])
-        self.base_name = base_name
-        if 'left_' in self.base_name:
-            self.base_name = self.base_name.split('left_')[1]
-
-    def _set_z_info(self, after_init=False):
-        left = self.input_images['left'][0]
-        if after_init:
-            left = left.info
-        image_z = (left.get('location', {}) or {}).get('z')
-        initial_z = self.settings['initial_position'].get('z', 0)
-        current_z = float(image_z or initial_z)
-        self.z_info = {
-            'offset': self.settings['calibration_measured_at_z'] - current_z,
-            'direction': -1 if self.settings['negative_z'] else 1,
-            'current': current_z,
-        }
-
-    def init_img(self, image, info=None):
-        'Initialize image.'
-        if info is None:
-            info = {}
-        info['base_name'] = self.base_name
-        return Image(self.settings, self.results, image=image, info=info)
-
-    def load_images(self, directory, name, ext):
-        'Load `left_name.ext` and `right_name.ext` stereo images from file.'
-        for stereo_id in ['left', 'right']:
-            filepath = f'{directory}/{stereo_id}_{name}.{ext}'
-            info = {'tag': stereo_id, 'name': filepath}
-            image = cv.imread(filepath)
-            if image is None:
-                self.log.error('Image missing.')
-            self.input_images[stereo_id] = [self.init_img(image, info=info)]
-        self._set_base_name(after_init=True)
-        self._set_z_info(after_init=True)
+    def __init__(self, core, input_images):
+        self.settings = core.settings.settings
+        self.imgs = core.settings.images
+        self.log = core.log
+        self.results = core.results
+        self.images = Images(core, input_images, self.calculate_soil_z)
+        self.z_info = self.images._get_z_info()
+        self.calculated_angle = None
 
     def check_images(self):
         'Check capture images.'
-        for stereo_id, images in self.input_images.items():
+        self.log.debug('Checking images...')
+        for stereo_id, images in self.images.input.items():
             for i, image in enumerate(images):
                 if image.image is None:
                     self.log.error('Image missing.')
                 image_id = f'{stereo_id}_{i}' if len(images) > 1 else stereo_id
+                pre_rotation_angle = self.settings['pre_rotation_angle']
+                if pre_rotation_angle:
+                    image.image = rotate(image.image, pre_rotation_angle)
                 image.reduce_data()
                 content = image.data.report
                 self.log.debug(content['report'])
-                if self.settings['verbose'] > 3 and self.settings['verbose'] != 5:
-                    filename = f'{image_id}_{self.base_name}'
-                    self.results.save_image(filename, image.image)
+                if self.imgs['input']:
+                    name = f'{self.images.base_name}_{image_id}'
+                    self.results.save_image(name, image.image)
                 if content['coverage'] < self.settings['input_coverage_threshold']:
                     self.log.error('Not enough detail. Check recent images.')
 
@@ -91,7 +45,7 @@ class Calculate():
         calibrated = {
             'width': self.settings['calibration_image_width'],
             'height': self.settings['calibration_image_height']}
-        current = shape(self.input_images['left'][0].image)
+        current = shape(self.images.input['left'][0].image)
         mismatch = {k: (v and v != current[k]) for k, v in calibrated.items()}
         if any(mismatch.values()):
             self.log.error('Image size must match calibration.')
@@ -99,7 +53,8 @@ class Calculate():
     def _z_at_dist(self, distance, z_reference=None):
         if z_reference is None:
             z_reference = self.z_info['current']
-        return int(z_reference + self.z_info['direction'] * distance)
+        z_value = z_reference + self.z_info['direction'] * distance
+        return 0 if np.isnan(z_value) else int(z_value)
 
     def calculate_soil_z(self, disparity_value):
         'Calculate soil z from disparity value.'
@@ -146,92 +101,76 @@ class Calculate():
         calcs[3] += f'({current_z = :<7}) + {direction} * ({distance = :.1f})'
         return calculated_soil_z, {'lines': calcs, 'values': values}
 
-    def _combine_disparity(self, stereo):
+    def _from_stereo(self):
+        self.log.debug('Calculating disparity from stereo...')
+        num_disparities = int(16 * self.settings['disparity_search_depth'])
+        block_size_setting = int(self.settings['disparity_block_size'])
+        block_size = min(max(5, odd(block_size_setting)), 255)
+        stereo = cv.StereoBM().create(num_disparities, block_size)
         disparities = []
-        for j, left_image in enumerate(self.input_images['left']):
-            for k, right_image in enumerate(self.input_images['right']):
+        for j, left_image in enumerate(self.images.input['left']):
+            for k, right_image in enumerate(self.images.input['right']):
                 left = left_image.preprocess()
                 right = right_image.preprocess()
                 result = stereo.compute(left, right)
-                multiple = len(self.input_images['left']) > 1
-                if self.settings['verbose'] > 5 and multiple:
-                    disparity = self.init_img(result)
-                    disparity.normalize()
-                    disparity.save(f'depth_map_bw_{j}_{k}')
+                multiple = len(self.images.input['left']) > 1
+                if multiple and self.imgs['multi_depth']:
+                    tag = f'disparity_{j}_{k}'
+                    self.images.output_init(result, tag, reduce=False)
+                    self.images.output[tag].normalize()
+                    self.images.output[tag].save(f'depth_map_bw_{j}_{k}')
                 disparities.append(result)
         disparity_data = disparities[0]
         for computed in disparities[1:]:
             mask = disparity_data < self.settings['pixel_value_threshold']
             disparity_data[mask] = computed[mask]
-        return disparity_data
+        self.images.output_init(disparity_data, 'disparity_from_stereo')
+
+    def _from_flow(self):
+        self.log.debug('Calculating disparity from flow...')
+        flow = Angle(self.settings, self.log, self.images)
+        flow.calculate()
+        self.calculated_angle = flow.angle
+        disparity_from_flow = self.images.output['disparity_from_flow']
+        _soil_z_ff, details_ff = self.calculate_soil_z(
+            disparity_from_flow.data.reduced['stats']['mid'])
+        disparity_from_flow.data.report['calculations'] = details_ff
 
     def calculate_disparity(self):
         'Calculate and reduce disparity data.'
-        num_disparities = int(16 * self.settings['disparity_search_depth'])
-        block_size_setting = int(self.settings['disparity_block_size'])
-        block_size = min(max(5, odd(block_size_setting)), 255)
-        stereo = cv.StereoBM().create(num_disparities, block_size)
-        disparity_data = self._combine_disparity(stereo)
-        self.output_images['disparity'] = self.init_img(
-            disparity_data, {'tag': 'disparity'})
-        self.output_images['disparity'].reduce_data()
-        if self.output_images['disparity'].data.data.max() < 1:
-            self.log.error('Zero disparity.')
-        if self.settings['verbose'] > 1:
-            self.save_output_images()
+        missing_adjust = ((self.settings['calibration_rotation_adjustment'] == 0
+                           and self.settings['calibration_disparity_offset'] == 0)
+                          or self.settings['calculate_angle'])
+        calculate_flow = (self.settings['calculate_flow']
+                          or self.settings['use_flow'] or missing_adjust)
+        if calculate_flow:
+            self._from_flow()
+        if self.settings['calculate_stereo']:
+            self._from_stereo()
 
-    def save_output_images(self):
-        'Save un-rotated depth maps and histograms according to verbosity setting.'
-        images = self.output_images
-        images['depth'] = self.init_img(images['disparity'].image)
-        images['depth'].normalize()
-        depth_data = images['disparity'].data
-        soil_z, _ = self.calculate_soil_z(depth_data.reduced['stats']['mid'])
-        z_prefix = f'{soil_z}_' if soil_z is not None else ''
-        if self.settings['verbose'] > 5 or self.settings['verbose'] == 3:
-            images['depth_bw'] = self.init_img(images['depth'].image)
-            images['depth_bw'].rotate(-1)
-            images['depth_bw'].add_soil_z_annotation(soil_z)
-            images['depth_bw'].save(f'{z_prefix}depth_map_bw')
-        if self.settings['verbose'] > 4 or self.settings['verbose'] == 2:
-            left = self.input_images['left'][0]
-            images['depth_color'] = self.init_img(images['depth'].image)
-            images['depth_color'].colorize_depth(depth_data)
-            images['depth_color'].rotate(-1)
-            images['depth_blend'] = self.init_img(left.image)
-            images['depth_blend'].blend_with(images['depth_color'].image)
-        if self.settings['verbose'] > 4:
-            left = self.input_images['left'][0]
-            right = self.input_images['right'][0]
-            for img in [left, right]:
-                img.create_histogram(self.calculate_soil_z, simple=True)
-            images['disparity'].create_histogram(self.calculate_soil_z)
-            images['depth'].channel3()
-            images['stereo_blend'] = self.init_img(left.image)
-            images['stereo_blend'].blend_with(right.image)
-            images['stereo_blend'].rotate()
-            all_images = [
-                [left.rotate_copy(),
-                 right.rotate_copy(),
-                 images['stereo_blend'].image],
-                [images['depth'].image,
-                 images['depth_color'].rotate_copy(),
-                 images['depth_blend'].rotate_copy()],
-                [left.histogram.histogram,
-                 right.histogram.histogram,
-                 images['disparity'].histogram.histogram]]
-            collage = create_output_collage(all_images, soil_z)
-            images['collage'] = self.init_img(collage)
-            images['collage'].save('all')
-            if self.settings['verbose'] > 5:
-                images['depth_color'].save('disparity_map')
-                images['disparity'].save_histogram('histogram')
-                images['img_hists'] = self.init_img(left.histogram.histogram)
-                images['img_hists'].blend_with(right.histogram.histogram)
-                images['img_hists'].save('image_histogram_blend')
-        if self.settings['verbose'] > 5 or self.settings['verbose'] == 2:
-            images['depth_blend'].add_soil_z_annotation(soil_z)
-            images['depth_blend'].save(f'{z_prefix}depth_map')
+        output = self.images.output
+        output['raw_disparity'] = output.get('disparity_from_stereo')
+        if self.settings['use_flow']:
+            self.images.rotated = False
+            output['raw_disparity'] = output.get('disparity_from_flow')
+
+        if output['raw_disparity'] is None:
+            self.log.error('No algorithm chosen.')
+
+        disparity = self.images.filter_plants(output['raw_disparity'].image)
+        self.images.output_init(disparity, 'disparity')
+        self._check_disparity()
+
+    def _check_disparity(self):
+        data = self.images.output['disparity'].data
+        if data.data.max() < 1:
+            msg = 'Zero disparity.'
+            self.save_debug_output()
+            self.log.error(msg)
+        if data.reduced['stats']['mid_size_p'] < 0.75:
+            msg = "Couldn't find surface."
+            self.save_debug_output()
+            self.log.error(msg)
 
     def calculate(self):
         'Calculate disparity, calibration factor, and soil height.'
@@ -254,18 +193,39 @@ class Calculate():
 
         details = None
         if not missing_disparity_offset:
-            disparity = self.output_images['disparity'].data.report
+            disparity = self.images.output['disparity'].data.report
             soil_z, details = self.calculate_soil_z(disparity['mid'])
             if len(details['lines']) > 0:
                 self.log.debug('\n'.join(details['lines']))
             disparity['calculations'] = details
+            low_soil_z, _ = self.calculate_soil_z(disparity['low'])
+            high_soil_z, _ = self.calculate_soil_z(disparity['high'])
+            soil_z_range_text = f'Soil z range: {low_soil_z} to {high_soil_z}'
+            self.log.debug(soil_z_range_text)
+            disparity['calculations']['lines'].append(soil_z_range_text)
+            disparity_ff = self.images.output.get('disparity_from_flow')
+            if disparity_ff is not None:
+                details_ff = disparity_ff.data.report['calculations']
+                soil_z_ff = details_ff['values']['calculated_soil_z']
+                msg = f'(alternate method would have calculated {soil_z_ff})'
+                self.log.debug(msg)
             if missing_calibration_factor:
                 self.check_soil_z(details['values'])
             self.results.save_soil_height(soil_z)
 
-            self.results.save_report(
-                self.base_name, self.output_images, self.input_images)
+        if details is not None and self.calculated_angle is not None:
+            details['angle'] = self.calculated_angle
+
+        self.save_debug_output()
+
         return details
+
+    def save_debug_output(self):
+        'Save debug output.'
+        if self.imgs['output_enabled']:
+            self.images.save()
+
+        self.results.save_report(self.images)
 
     def check_soil_z(self, values):
         'Verify soil z height is within expected range.'
@@ -278,7 +238,7 @@ class Calculate():
 
     def disparity_debug_logs(self):
         'Send disparity debug logs.'
-        disparity = self.output_images['disparity'].data.report
+        disparity = self.images.output['disparity'].data.report
         value = disparity['mid']
         coverage = disparity['coverage']
         self.log.debug(disparity['report'])
@@ -288,21 +248,23 @@ class Calculate():
 
     def set_disparity_offset(self):
         'Set disparity offset.'
-        print('Saving disparity offset...')
-        disparity = self.output_images['disparity'].data.report['mid']
+        self.log.debug('Saving disparity offset...')
+        disparity = self.images.output['disparity'].data.report['mid']
         self.settings['calibration_disparity_offset'] = disparity
         self.settings['calibration_measured_at_z'] = self.z_info['current']
-        img_size = shape(self.input_images['left'][0].image)
+        img_size = shape(self.images.input['left'][0].image)
         self.settings['calibration_image_width'] = img_size['width']
         self.settings['calibration_image_height'] = img_size['height']
 
     def set_calibration_factor(self):
         'Set calibration_factor.'
-        print('Calculating calibration factor...')
-        disparity = self.output_images['disparity'].data.report['mid']
+        self.log.debug('Calculating calibration factor...')
+        disparity = self.images.output['disparity'].data.report['mid']
         disparity_offset = self.settings['calibration_disparity_offset']
         disparity_difference = disparity - disparity_offset
         if disparity_difference == 0:
             self.log.error('Zero disparity difference.')
+        if self.z_info['offset'] == 0:
+            self.log.error('Zero offset.')
         factor = round(self.z_info['offset'] / disparity_difference, 4)
         self.settings['calibration_factor'] = factor

@@ -4,7 +4,7 @@
   "author": "FarmBot, Inc.",
   "description": "Measure soil z height at the current position.",
   "farmware_manifest_version": "2.0.0",
-  "package_version": "1.2.3",
+  "package_version": "1.3.0",
   "farmbot_os_version_requirement": ">=8.0.0",
   "url": "https://raw.githubusercontent.com/FarmBot-Labs/measure-soil-height/main/manifest.json",
   "zip": "https://github.com/FarmBot-Labs/measure-soil-height/archive/main.zip",
@@ -13,62 +13,52 @@
   "config": {
     "0": {
       "name": "measured_distance",
-      "label": "(required) Measured distance from camera to soil during initial calibration",
+      "label": "Measured distance from camera to soil in millimeters (required input for calibration)",
       "value": 0
     },
     "1": {
-      "name": "disparity_search_depth",
-      "label": "Disparity search depth",
-      "value": 1
-    },
-    "2": {
       "name": "disparity_block_size",
       "label": "Disparity block size (odd, 5 - 255)",
       "value": 15
     },
-    "3": {
-      "name": "camera_port",
-      "label": "Camera port",
-      "value": 0
-    },
-    "4": {
-      "name": "reverse_image_order",
-      "label": "Swap left/right",
-      "value": 0
-    },
-    "5": {
-      "name": "rotation_adjustment",
-      "label": "Rotation adjustment (degrees)",
-      "value": 0
-    },
-    "6": {
+    "2": {
       "name": "verbose",
-      "label": "Verbosity (> 5 not recommended)",
+      "label": "Image output option (0-1: none, 2: colorized depth, 3: grayscale depth, 4: input, 5: collage)",
       "value": 2
     },
-    "7": {
+    "3": {
+      "name": "log_verbosity",
+      "label": "Log verbosity (0: none, 1: result toast, 2: debug logs)",
+      "value": 1
+    },
+    "4": {
       "name": "calibration_factor",
       "label": "Calibration factor result",
       "value": 0
     },
-    "8": {
+    "5": {
       "name": "calibration_disparity_offset",
       "label": "Calibration offset result",
       "value": 0
     },
-    "9": {
+    "6": {
       "name": "calibration_image_width",
       "label": "Image width during calibration",
       "value": 0
     },
-    "10": {
+    "7": {
       "name": "calibration_image_height",
       "label": "Image height during calibration",
       "value": 0
     },
-    "11": {
+    "8": {
       "name": "calibration_measured_at_z",
       "label": "Z-axis position during calibration",
+      "value": 0
+    },
+    "9": {
+      "name": "calibration_rotation_adjustment",
+      "label": "Calibration camera rotation adjustment",
       "value": 0
     }
   }

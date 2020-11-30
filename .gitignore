@@ -1,7 +1,8 @@
 *.pyc
 results
-test_images
+tests/images
 *.png
 *.jpg
 *.svg
 .vscode
+*.json

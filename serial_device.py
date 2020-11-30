@@ -10,20 +10,21 @@ class SerialDevice():
     'Communicate with a device over serial.'
 
     def __init__(self, settings):
+        self.verbosity = settings['log_verbosity'] - 1
+        self.log('Setting up serial connection...', verbosity=1)
         port = settings['serial_port']
         baud = settings['serial_baud_rate']
         self.serial = serial.Serial(port, baud)
         self.buffer = b''
         self.speed = {}
-        self.verbosity = settings['verbose'] - 1
         self.get_speeds()
-        if settings['negative_z']:
+        if settings['serial_negative_z']:
             self.send('F22 P53 V1')
         if settings['serial_reset_position']:
             self.send('F84 X1 Y1 Z1')
         self.validate_params()
 
-    def log(self, message, verbosity=2):
+    def log(self, message, _log_type='info', _channels=None, verbosity=2):
         'Print a message.'
         if self.verbosity >= verbosity:
             print(message)
@@ -95,7 +96,7 @@ class SerialDevice():
         position['x'] += x
         position['y'] += y
         position['z'] += z
-        self.log(f'Moving to {position}', 1)
+        self.log(f'Moving to {position}', verbosity=1)
         x_spd = self.speed['x'] * speed / 100.
         y_spd = self.speed['y'] * speed / 100.
         z_spd = self.speed['z'] * speed / 100.
