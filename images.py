@@ -5,7 +5,8 @@
 import numpy as np
 import cv2 as cv
 from process_image import ProcessImage, shape
-from histogram import FONT, COLORS
+
+FONT = cv.FONT_HERSHEY_PLAIN
 
 
 def create_output_collage(all_images, details, location):
@@ -47,7 +48,7 @@ def create_output_collage(all_images, details, location):
                 collage, text,
                 (int(shape(collage)['width'] / 2 * 0.1 + j * 600 / factor),
                  int(shape(collage)['height'] / 2 * 1.7 + i * 50 / factor)),
-                FONT, 3 / factor, COLORS['white'], int(2 / factor))
+                FONT, 3 / factor, (255, 255, 255), int(2 / factor))
     return collage
 
 

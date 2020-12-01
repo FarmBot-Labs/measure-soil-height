@@ -4,5 +4,6 @@ tests/images
 *.png
 *.jpg
 *.svg
+!module_graph.svg
 .vscode
 *.json

@@ -4,9 +4,9 @@
 
 import numpy as np
 import cv2 as cv
-from histogram import FONT, COLORS
 
-WHITE = COLORS['white']
+WHITE = (255, 255, 255)
+FONT = cv.FONT_HERSHEY_PLAIN
 
 
 class Plot():
@@ -53,7 +53,7 @@ class Plot():
         x_intercept = -int(self.intercept / self.slope)
         for i, x_value in enumerate((x_values + [x_intercept])[::-1]):
             if i > 0:
-                percent_y = (100 - percent_y) if alternate else percent_y
+                percent_y = (99 - percent_y) if alternate else percent_y
             add_text(_v(x_value), position_x=int(x_value), percent_y=percent_y)
 
     def add_labels(self):
