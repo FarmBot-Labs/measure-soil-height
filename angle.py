@@ -79,13 +79,15 @@ class Angle():
         return avg
 
     def _compare_angles(self):
-        self.log.debug('Checking image angle...')
+        self.log.debug('Checking image angle...', verbosity=2)
         settings = self.settings
         self._calculate_initial_angle()
         self._adjust_angle()
         angle_adjust_key = 'calibration_rotation_adjustment'
         provided = settings['rotation'] + settings[angle_adjust_key]
-        msg = f'Using {self.angle = :.1f} camera angle instead of {provided = }'
+        msg = f'Using {self.angle:.1f} camera angle'
+        if (self.angle - provided) > 0.1:
+            msg += f' instead of {provided}'
         self.log.debug(msg)
         self.angle = round(self.angle, 1)
         missing_adjust = settings['calibration_rotation_adjustment'] == 0

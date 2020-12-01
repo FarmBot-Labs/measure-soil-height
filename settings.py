@@ -105,9 +105,9 @@ class Settings():
             'sat_max': int(os.getenv('WEED_DETECTOR_S_HI', '255')),
             'val_min': int(os.getenv('WEED_DETECTOR_V_LO', '50')),
             'val_max': int(os.getenv('WEED_DETECTOR_V_HI', '255')),
-            'blur': int(os.getenv('WEED_DETECTOR_V_HI', '15')),
-            'morph': int(os.getenv('WEED_DETECTOR_V_HI', '6')),
-            'iterations': int(os.getenv('WEED_DETECTOR_V_HI', '4')),
+            'blur': int(os.getenv('WEED_DETECTOR_blur', '15')),
+            'morph': int(os.getenv('WEED_DETECTOR_morph', '6')),
+            'iterations': int(os.getenv('WEED_DETECTOR_iteration', '4')),
         }
 
         self.settings['images_dir'] = (

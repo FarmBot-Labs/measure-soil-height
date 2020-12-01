@@ -5,6 +5,8 @@
 import sys
 from time import time
 
+PREFIX = '[Measure Soil Height]'
+
 
 class Log():
     'Log messages.'
@@ -56,16 +58,16 @@ class Log():
                                  for i, line in enumerate(msg.split('\n'))])
         return message
 
-    def debug(self, message, log_time=None):
+    def debug(self, message, log_time=None, verbosity=3):
         'Send error message.'
-        if self.settings['log_verbosity'] > 2:
-            self.log(message, 'debug', log_time=log_time)
+        if self.settings['log_verbosity'] >= verbosity:
+            self.log(f'{PREFIX} {message}', 'debug', log_time=log_time)
         elif self.settings['log_verbosity'] > 0:
             print(message)
 
     def error(self, message):
         'Send error message.'
-        self.log(message, 'error', error=True)
+        self.log(f'{PREFIX} {message}', 'error', error=True)
         if self.settings['exit_on_error']:
             self.errors.append(message)
             sys.exit(1)

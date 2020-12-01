@@ -45,7 +45,7 @@ class MeasureSoilHeight():
 
     def location_captures(self, i, stereo_id, timestamp):
         'Capture images at position.'
-        self.log.debug(f'Capturing {stereo_id} image...')
+        self.log.debug(f'Capturing {stereo_id} image...', verbosity=2)
         port = int(self.settings['camera_port'])
         for _ in range(self.settings['capture_count_at_each_location']):
             sleep(self.settings['repeat_capture_delay_s'])
@@ -88,7 +88,7 @@ class MeasureSoilHeight():
 
         if self.settings['use_lights']:
             self.device.write_pin(pin_number=7, pin_value=0, pin_mode=0)
-        self.log.debug('Returning to starting position...')
+        self.log.debug('Returning to starting position...', verbosity=2)
         self.device.move_relative(
             x=to_start['x'],
             y=to_start['y'],

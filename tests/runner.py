@@ -66,6 +66,12 @@ def generate_inputs(tests_path):
     inputs['images'] = [[_test_img('soil_surface')]]
     with open(f'{tests_path("data")}/rotation.json', 'w') as input_file:
         input_file.write(json.dumps(inputs, indent=2))
+    del inputs['settings']['pre_rotation_angle']
+    del inputs['settings']['calculate_angle']
+    inputs['settings']['verbose'] = 0
+    inputs['settings']['log_verbosity'] = 2
+    with open(f'{tests_path("data")}/quick_calculation.json', 'w') as input_file:
+        input_file.write(json.dumps(inputs, indent=2))
 
 
 def assemble_results(test_images, set_results):

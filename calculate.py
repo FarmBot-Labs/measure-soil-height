@@ -23,7 +23,7 @@ class Calculate():
 
     def check_images(self):
         'Check capture images.'
-        self.log.debug('Checking images...')
+        self.log.debug('Checking images...', verbosity=2)
         for stereo_id, images in self.images.input.items():
             for i, image in enumerate(images):
                 if image.image is None:
@@ -102,7 +102,7 @@ class Calculate():
         return calculated_soil_z, {'lines': calcs, 'values': values}
 
     def _from_stereo(self):
-        self.log.debug('Calculating disparity from stereo...')
+        self.log.debug('Calculating disparity...', verbosity=2)
         num_disparities = int(16 * self.settings['disparity_search_depth'])
         block_size_setting = int(self.settings['disparity_block_size'])
         block_size = min(max(5, odd(block_size_setting)), 255)
@@ -127,7 +127,7 @@ class Calculate():
         self.images.output_init(disparity_data, 'disparity_from_stereo')
 
     def _from_flow(self):
-        self.log.debug('Calculating disparity from flow...')
+        self.log.debug('Calculating flow...')
         flow = Angle(self.settings, self.log, self.images)
         flow.calculate()
         self.calculated_angle = flow.angle
@@ -201,7 +201,7 @@ class Calculate():
             low_soil_z, _ = self.calculate_soil_z(disparity['low'])
             high_soil_z, _ = self.calculate_soil_z(disparity['high'])
             soil_z_range_text = f'Soil z range: {low_soil_z} to {high_soil_z}'
-            self.log.debug(soil_z_range_text)
+            self.log.debug(soil_z_range_text, verbosity=2)
             disparity['calculations']['lines'].append(soil_z_range_text)
             disparity_ff = self.images.output.get('disparity_from_flow')
             if disparity_ff is not None:
@@ -258,7 +258,7 @@ class Calculate():
 
     def set_calibration_factor(self):
         'Set calibration_factor.'
-        self.log.debug('Calculating calibration factor...')
+        self.log.debug('Calculating calibration factor...', verbosity=2)
         disparity = self.images.output['disparity'].data.report['mid']
         disparity_offset = self.settings['calibration_disparity_offset']
         disparity_difference = disparity - disparity_offset

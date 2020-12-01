@@ -70,9 +70,9 @@ class Results():
 
     def save_report(self, all_images):
         'Save reduced data to file.'
-        self.log.debug('Saving data report...')
         directory = self.settings['images_dir']
         if self.settings_class.reports_enabled():
+            self.log.debug('Saving data report...')
             inputs = {i.info['tag']: i.data for d in all_images.input.values()
                       for i in d}
             output_tags = [

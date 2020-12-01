@@ -4,7 +4,7 @@
   "author": "FarmBot, Inc.",
   "description": "Measure soil z height at the current position.",
   "farmware_manifest_version": "2.0.0",
-  "package_version": "1.3.0",
+  "package_version": "1.3.1",
   "farmbot_os_version_requirement": ">=8.0.0",
   "url": "https://raw.githubusercontent.com/FarmBot-Labs/measure-soil-height/main/manifest.json",
   "zip": "https://github.com/FarmBot-Labs/measure-soil-height/archive/main.zip",

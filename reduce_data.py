@@ -96,9 +96,10 @@ class ReduceData():
         stats['thresh_size_p'] = self._percent(self.data, masks['threshold'])
         if self.data[np.invert(np.isnan(self.data))].size < 1:
             stats['max'] = np.nan
+            masks['max'] = masks['all']
         else:
             stats['max'] = int(self.data[np.invert(np.isnan(self.data))].max())
-        masks['max'] = self.data < stats['max']
+            masks['max'] = self.data < stats['max']
         if self.info.get('tag') in ['angles', 'dx', 'dy']:
             mean, sigma, _ = self._find_highest_bin(mean=0, sigma=89)
             self._add_calculated(round(float(mean), 2), round(float(sigma), 2))

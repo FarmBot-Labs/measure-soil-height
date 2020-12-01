@@ -147,7 +147,7 @@ class Images():
 
     def save(self):
         'Save un-rotated depth maps and histograms according to verbosity setting.'
-        self.log.debug('Saving output images...')
+        self.log.debug('Saving output images...', verbosity=2)
         images = self.output
         images['depth'] = self.init_img(images['disparity'].image)
         images['depth'].normalize()
