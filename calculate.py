@@ -19,7 +19,7 @@ class Calculate():
         self.results = core.results
         self.images = Images(core, input_images, self.calculate_soil_z)
         self.z_info = self.images._get_z_info()
-        self.calculated_angle = None
+        self.calculated_angle = 0
 
     def check_images(self):
         'Check capture images.'
@@ -36,8 +36,7 @@ class Calculate():
                 content = image.data.report
                 self.log.debug(content['report'])
                 if self.imgs['input']:
-                    name = f'{self.images.base_name}_{image_id}'
-                    self.results.save_image(name, image.image)
+                    image.save(image_id)
                 if content['coverage'] < self.settings['input_coverage_threshold']:
                     self.log.error('Not enough detail. Check recent images.')
 
@@ -130,6 +129,7 @@ class Calculate():
         self.log.debug('Calculating flow...')
         flow = Angle(self.settings, self.log, self.images)
         flow.calculate()
+        self.images.set_angle(flow.angle)
         self.calculated_angle = flow.angle
         disparity_from_flow = self.images.output['disparity_from_flow']
         _soil_z_ff, details_ff = self.calculate_soil_z(
@@ -138,15 +138,8 @@ class Calculate():
 
     def calculate_disparity(self):
         'Calculate and reduce disparity data.'
-        missing_adjust = ((self.settings['calibration_rotation_adjustment'] == 0
-                           and self.settings['calibration_disparity_offset'] == 0)
-                          or self.settings['calculate_angle'])
-        calculate_flow = (self.settings['calculate_flow']
-                          or self.settings['use_flow'] or missing_adjust)
-        if calculate_flow:
-            self._from_flow()
-        if self.settings['calculate_stereo']:
-            self._from_stereo()
+        self._from_flow()
+        self._from_stereo()
 
         output = self.images.output
         output['raw_disparity'] = output.get('disparity_from_stereo')
@@ -167,7 +160,8 @@ class Calculate():
             msg = 'Zero disparity.'
             self.save_debug_output()
             self.log.error(msg)
-        if data.reduced['stats']['mid_size_p'] < 0.75:
+        percent_threshold = self.settings['disparity_percent_threshold']
+        if data.reduced['stats']['mid_size_p'] < percent_threshold:
             msg = "Couldn't find surface."
             self.save_debug_output()
             self.log.error(msg)
@@ -191,7 +185,7 @@ class Calculate():
             self.set_calibration_factor()
             self.results.save_calibration()
 
-        details = None
+        details = {}
         if not missing_disparity_offset:
             disparity = self.images.output['disparity'].data.report
             soil_z, details = self.calculate_soil_z(disparity['mid'])
@@ -213,8 +207,7 @@ class Calculate():
                 self.check_soil_z(details['values'])
             self.results.save_soil_height(soil_z)
 
-        if details is not None and self.calculated_angle is not None:
-            details['angle'] = self.calculated_angle
+        details['angle'] = self.calculated_angle
 
         self.save_debug_output()
 

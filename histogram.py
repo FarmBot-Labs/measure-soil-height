@@ -44,9 +44,9 @@ class Histogram():
             'data': data,
             'mid': data[self.reduced['masks']['mid']],
         }
-        try:
+        if len(self.reduced['history']) > 1:
             prev_mid = data[self.reduced['history'][-2]['masks']['mid']]
-        except IndexError:
+        else:
             prev_mid = self.data['mid']
         self.data['data'] = data[np.invert(np.isnan(data))]
         self.data['mid'] = self.data['mid'][np.invert(

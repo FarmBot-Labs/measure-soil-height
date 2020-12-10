@@ -255,10 +255,6 @@ similar depth values:
 
 ![flat depth histogram](https://user-images.githubusercontent.com/12681652/100785231-3672d000-33c5-11eb-8861-90865c7ed11d.jpg)
 
-Currently, the `Calibration camera rotation adjustment` input (in degrees)
-can adjust the images to correct the issue. Typically `90` or `-90` is required
-if the camera is rotated significantly in its mount.
-
 ## Non-linear disparity
 
 When the disparity calculation fails to produce linear differences between
@@ -269,7 +265,8 @@ alt="linear vs non-linear points on plot"
 height="360px"
 src="https://user-images.githubusercontent.com/12681652/100785236-370b6680-33c5-11eb-9702-02e6c0c6ffd2.jpg">
 
-This may be caused by poor quality image captures or subject matter or motor stalls.
+This may be caused by poor quality image captures or subject matter,
+or by motor stalls.
 
 ## Insufficient detail
 
@@ -370,9 +367,9 @@ Generate and save summary data and plot of the calculations at each stereo heigh
      - __Histogram__ - Generate image and text histograms from the provided data.
  - __Core__ - Wraps Settings, Log, Results, and FarmwareTools for ease of use.
    - __Settings__ - Import and manage inputs provided via environment variables.
+(includes `Farmware` page inputs, `Run Farmware` step inputs, and other `FarmwareEnvs`.)
    - __Log__ - Send log messages, toasts, and errors.
    - __Results__ - Summarize and handle all output. Saves files and uploads results.
-(includes `Farmware` page inputs, `Run Farmware` step inputs, and other `FarmwareEnvs`.)
    - __SerialDevice__ - _(for local development only)_ Communicate with a device running the
 [FarmBot Arduino Firmware](https://github.com/FarmBot/farmbot-arduino-firmware)
 over a serial connection. Can be used instead of `farmware_tools.device`

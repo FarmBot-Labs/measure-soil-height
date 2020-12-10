@@ -62,12 +62,10 @@ def generate_inputs(tests_path):
     with open(f'{tests_path("data")}/calculation.json', 'w') as input_file:
         input_file.write(json.dumps(inputs, indent=2))
     inputs['settings']['pre_rotation_angle'] = 25
-    inputs['settings']['calculate_angle'] = True
     inputs['images'] = [[_test_img('soil_surface')]]
     with open(f'{tests_path("data")}/rotation.json', 'w') as input_file:
         input_file.write(json.dumps(inputs, indent=2))
     del inputs['settings']['pre_rotation_angle']
-    del inputs['settings']['calculate_angle']
     inputs['settings']['verbose'] = 0
     inputs['settings']['log_verbosity'] = 2
     with open(f'{tests_path("data")}/quick_calculation.json', 'w') as input_file:
@@ -104,6 +102,8 @@ def average_results(results):
     'Calculate result averages.'
     averages = {}
     for key, data in results.items():
+        if key == 'name':
+            continue
         data = np.array([d for d in data if d is not None])
         precision = 2 if key == 'duration' else 0
         if len(data) < 1:
@@ -136,15 +136,20 @@ def print_ordered_values(results, combined=False):
     else:
         print('ordered values:')
     for key, result in results.items():
-        if key in ['x', 'y', 'assert', 'result_ok', 'error_message']:
+        if key in ['x', 'y', 'assert', 'result_ok', 'error_message', 'name']:
             continue
         data = np.array([d for d in result if d is not None])
         if len(data) < 1:
             continue
         avg = ''
+        label = key
         if combined:
-            avg = f'{data.mean():<8.2f}'
-        print(f'  {key:<10} {avg} {sorted(list(data.round(2)))}')
+            if key == 'error':
+                avg = f'{np.abs(data).mean():<8.2f}'
+                label = f'{key} (abs)'
+            else:
+                avg = f'{data.mean():<8.2f}'
+        print(f'  {label:<10} {avg:^15} {sorted(list(data.round(2)))}')
 
 
 class TestRunner():
@@ -156,10 +161,11 @@ class TestRunner():
         self.include = []
         self.output = {}
         self.status_ok = True
+        init_inputs = not os.path.exists(path('data'))
         for directory in ['data', 'output', 'images', 'images/generated']:
             if not os.path.exists(path(directory)):
                 os.makedirs(path(directory))
-        if not os.path.exists(path('data/calibration.json')):
+        if init_inputs:
             generate_inputs(path)
 
     @staticmethod
@@ -167,10 +173,13 @@ class TestRunner():
         'Download image at the provided URL.'
         filename = f'{path("images")}/{url.split("/")[-1]}.jpg'
         if not os.path.exists(filename):
+            print(f'downloading {filename}...')
             try:
                 urllib.request.urlretrieve(url, filename)
             except urllib.error.HTTPError as error:
                 print(error)
+        else:
+            print(f'{filename} already downloaded.')
         return filename
 
     def convert(self, data_set_images):
@@ -184,7 +193,8 @@ class TestRunner():
                     for stereo_id, filename in stereo_names.items():
                         pair[stereo_id] = [{'name': filename}]
                 for stereo_id in ['left', 'right']:
-                    name = pair[stereo_id][0]['name']
+                    first = pair[stereo_id][0]
+                    name = first.get('name') or first.get('url')
                     if name.lower().startswith('http'):
                         pair[stereo_id][0]['name'] = self.download(name)
         return data_set_images

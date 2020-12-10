@@ -33,7 +33,7 @@ def shape(image):
 class ProcessImage():
     'Process image data.'
 
-    def __init__(self, core, image=None, info=None):
+    def __init__(self, core, image, angle, info):
         self.core = core
         self.settings = core.settings.settings
         self.results = core.results
@@ -42,6 +42,8 @@ class ProcessImage():
         self.viewer = False
         self.data = None
         self.histogram = None
+        self.saved = False
+        self.angle = angle
 
     def reduce_data(self, **kwargs):
         'Generate reduced data.'
@@ -51,9 +53,7 @@ class ProcessImage():
         'Return rotated image.'
         if image is None:
             image = self.image
-        initial_rotation = self.settings['rotation']
-        rotation_adjustment = self.settings['calibration_rotation_adjustment']
-        angle = initial_rotation + rotation_adjustment
+        angle = -self.angle
         return rotate(image, direction * angle)
 
     def rotate(self, direction=1):
@@ -112,8 +112,12 @@ class ProcessImage():
         mid_values = self.image[reduced['masks']['mid']]
         stats = reduced['stats']
         max_v = stats['max']
-        lower = min(normalize(stats['low'], max_v, 255), mid_values.min())
-        upper = max(normalize(stats['high'], max_v, 255), mid_values.max())
+        if len(mid_values) < 1:
+            lower = 0
+            upper = 255
+        else:
+            lower = min(normalize(stats['low'], max_v, 255), mid_values.min())
+            upper = max(normalize(stats['high'], max_v, 255), mid_values.max())
         mid_values_normalized = normalize(mid_values, upper, 155, lower)
         green_values = 100 + mid_values_normalized
         green_values[:, 0] = 0
@@ -167,3 +171,4 @@ class ProcessImage():
             image = self.image
         name = f'{self.info["base_name"]}_{name}'
         self.results.save_image(name, image)
+        self.saved = True

@@ -27,8 +27,9 @@ DEFAULTS = {
     'image_blend_percent': 50,
     'wide_sigma_threshold': 10,
     'selection_width': 3,
-    'calculate_stereo': True,
-    'calculate_flow': False,
+    'disparity_percent_threshold': 1.1,
+    'angle_percent_threshold': 3,
+    'delta_value_threshold': 0.25,
     'use_flow': False,
     'adjust_calibration_parameters': False,
     'image_annotate_soil_z': False,
@@ -42,9 +43,16 @@ DEFAULTS = {
     'serial_z_negative': True,
     'use_lights': False,
     'pre_rotation_angle': 0,
-    'calculate_angle': False,
     'time': False,
 }
+
+STRINGS = [
+    'serial_port',
+]
+FLOATS = [
+    'disparity_percent_threshold',
+    'delta_value_threshold',
+]
 
 with open('manifest.json', 'r') as manifest_file:
     manifest_configs_list = json.load(manifest_file).get('config', {}).values()
@@ -63,27 +71,25 @@ class Settings():
         self.save(self.settings['images_dir'])
         self.images = self.get_image_settings()
 
-    def _get_unlisted_config(self, key, default, type_=int):
+    def _get_config(self, key, default, type_=int):
         prefix = self.farmware_name.lower().replace(' ', '_')
         return type_(os.getenv(f'{prefix}_{key}', default))
 
-    def _get_config(self, key):
+    def _get_manifest_config(self, key):
         'Get config input.'
-        try:
-            return self.tools.get_config_value(self.farmware_name, key, float)
-        except KeyError:
-            return manifest_configs[key]['value']
+        return self._get_config(key, manifest_configs[key]['value'], float)
 
     def _init(self):
         'Load settings from env and state.'
         for key, default in DEFAULTS.items():
-            type_ = str if key in ['serial_port'] else int
-            self.settings[key] = self._get_unlisted_config(key, default, type_)
+            type_ = str if key in STRINGS else int
+            type_ = float if key in FLOATS else type_
+            self.settings[key] = self._get_config(key, default, type_)
 
         self.settings['farmware_name'] = self.farmware_name
 
         for key in manifest_configs.keys():
-            self.settings[key] = float(self._get_config(key))
+            self.settings[key] = float(self._get_manifest_config(key))
 
         width_key = 'take_photo_width'
         height_key = 'take_photo_height'
@@ -92,7 +98,7 @@ class Settings():
 
         rotation_key = 'CAMERA_CALIBRATION_total_rotation_angle'
         rotation_angle = float(os.getenv(rotation_key, '0'))
-        self.settings['rotation'] = rotation_angle
+        self.settings['other_rotation'] = rotation_angle
 
         pixel_scale_key = 'CAMERA_CALIBRATION_coord_scale'
         pixel_scale = float(os.getenv(pixel_scale_key, '0'))

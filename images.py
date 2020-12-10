@@ -76,6 +76,7 @@ class Images():
     def __init__(self, core, input_images, calc_soil_z):
         self.core = core
         self.base_name = self._get_base_name(input_images)
+        self.angle = 0
         self.input = self._init_inputs(input_images)
         self.output = {}
         self.settings = core.settings.settings
@@ -117,12 +118,21 @@ class Images():
             'current': current_z,
         }
 
+    def set_angle(self, angle):
+        'Set camera angle.'
+        self.angle = angle
+        for stereo_images in self.input.values():
+            for image in stereo_images:
+                image.angle = angle
+        for image in self.output.values():
+            image.angle = angle
+
     def init_img(self, image, info=None):
         'Initialize image.'
         if info is None:
             info = {}
         info['base_name'] = self.base_name
-        return ProcessImage(self.core, image=image, info=info)
+        return ProcessImage(self.core, image=image, angle=self.angle, info=info)
 
     def output_init(self, image, tag, reduce=True):
         'Initialize output image.'

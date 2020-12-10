@@ -45,6 +45,7 @@ def test_measure_soil_height():
 def test_calculate_multiple():
     'Test CalculateMultiple.'
     print_title('CalculateMultiple', char='_')
+    os.environ.clear()
     runner = TestRunner()
     runner.pre_times = TIMES
     runner.verbosity = 5

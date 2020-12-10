@@ -14,7 +14,7 @@ class Angle():
         self.log = log
         self.images = images
         self.deltas = None
-        self.angle = None
+        self.angle = 0
         self.mask = None
 
     def _calculate_initial_angle(self):
@@ -31,7 +31,8 @@ class Angle():
         self.log.debug(angles.data.report['report'])
         self.angle = angles.data.reduced['stats']['mid']
         self.mask = angles.data.reduced['masks']['mid']
-        if angles.data.reduced['stats']['mid_size_p'] < 3:
+        percent_threshold = self.settings['angle_percent_threshold']
+        if angles.data.reduced['stats']['mid_size_p'] < percent_threshold:
             msg = f'Mixed angles. Using 0 instead of {self.angle:.1f}'
             self.log.debug(msg)
             self.angle = 0
@@ -46,6 +47,11 @@ class Angle():
 
     def _adjust_angle(self):
         delta = [self._get_delta('x'), self._get_delta('y')]
+        threshold = self.settings['delta_value_threshold']
+        if abs(delta[0]) < threshold and abs(delta[1]) < threshold:
+            msg = f'Small deltas. Using 0 instead of {self.angle:.1f}'
+            self.log.debug(msg)
+            self.angle = 0
         delta_log = f'rotation [dx, dy]: 0 {np.around(delta, 2)}'
         rotated_delta = self.rotate_vector(delta, self.angle)
         delta_log += f' -> {self.angle:.2f} {np.around(rotated_delta, 2)}'
@@ -71,7 +77,8 @@ class Angle():
         delta_data = self.images.output[tag]
         delta_data.reduce_data(no_threshold=True)
         avg = delta_data.data.reduced['stats']['mid']
-        if delta_data.data.reduced['stats']['mid_size_p'] < 3:
+        percent_threshold = self.settings['angle_percent_threshold']
+        if delta_data.data.reduced['stats']['mid_size_p'] < percent_threshold:
             self.log.debug(f'Small {tag} sample. Using 0 instead of {avg:.1f}')
             avg = 0
         if abs(avg) <= 1:
@@ -83,16 +90,10 @@ class Angle():
         settings = self.settings
         self._calculate_initial_angle()
         self._adjust_angle()
-        angle_adjust_key = 'calibration_rotation_adjustment'
-        provided = settings['rotation'] + settings[angle_adjust_key]
         msg = f'Using {self.angle:.1f} camera angle'
-        if (self.angle - provided) > 0.1:
-            msg += f' instead of {provided}'
         self.log.debug(msg)
         self.angle = round(self.angle, 1)
-        missing_adjust = settings['calibration_rotation_adjustment'] == 0
-        if missing_adjust:
-            settings[angle_adjust_key] = settings['rotation'] - self.angle
+        settings['camera_rotation_adjustment'] = -self.angle
 
     def calculate(self):
         'Calculate angle using optical flow.'

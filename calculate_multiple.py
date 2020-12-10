@@ -107,7 +107,8 @@ class CalculateMultiple():
 
     def plot(self):
         'Plot all set values.'
-        set_results = [r for r in self.set_results if r is not None]
+        set_results = [r for r in self.set_results
+                       if r.get('values') is not None]
         if len(set_results) > 0:
             values = set_results[-1]['values']
             measured_distance = values['measured_distance']
