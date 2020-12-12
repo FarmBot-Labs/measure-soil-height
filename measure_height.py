@@ -2,6 +2,7 @@
 
 '''Measure soil z height using OpenCV and FarmBot's current position.'''
 
+from copy import copy
 from time import time, sleep
 TIMES = {'start': time()}
 if TIMES:
@@ -24,6 +25,7 @@ class MeasureSoilHeight():
         self.device = self.core.device
         self.cv = cv
         self.images = []
+        self.expected_position = self.settings['initial_position']
 
     def capture(self, port, timestamp, stereo_id):
         'Capture image with camera.'
@@ -38,6 +40,9 @@ class MeasureSoilHeight():
         if not ret:
             self.log.error('Problem getting image.')
         location = self.device.get_current_position()
+        if self.settings['assume_target_reached']:
+            location = copy(self.expected_position)
+        self.log.debug(f'{timestamp} {location}')
         if self.settings['capture_only']:
             self.results.save_image(f'{stereo_id}_{timestamp}', image)
         return {'data': image, 'tag': stereo_id,
@@ -74,12 +79,16 @@ class MeasureSoilHeight():
             if i > 0:
                 z_direction = -1 if self.settings['negative_z'] else 1
                 z_relative = z_direction * self.settings['set_offset_mm']
+                if self.expected_position.get('z') is not None:
+                    self.expected_position['z'] += z_relative
                 to_start['z'] -= z_relative
                 self.device.move_relative(x=0, y=0, z=z_relative, speed=speed)
             stereo_id = image_order[int(not flip)]
             self.location_captures(i, stereo_id, timestamp)
 
             y_relative = self.settings['stereo_y'] * (1 if not flip else -1)
+            if self.expected_position.get('y') is not None:
+                self.expected_position['y'] -= y_relative
             to_start['y'] += y_relative
             self.device.move_relative(x=0, y=-y_relative, z=0, speed=speed)
             stereo_id = image_order[int(flip)]

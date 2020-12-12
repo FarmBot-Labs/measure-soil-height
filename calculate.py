@@ -244,6 +244,7 @@ class Calculate():
         self.log.debug('Saving disparity offset...')
         disparity = self.images.output['disparity'].data.report['mid']
         self.settings['calibration_disparity_offset'] = disparity
+        self.log.debug(self.z_info)
         self.settings['calibration_measured_at_z'] = self.z_info['current']
         img_size = shape(self.images.input['left'][0].image)
         self.settings['calibration_image_width'] = img_size['width']
@@ -258,6 +259,7 @@ class Calculate():
         if disparity_difference == 0:
             self.log.error('Zero disparity difference.')
         if self.z_info['offset'] == 0:
+            self.log.debug(self.z_info)
             self.log.error('Zero offset.')
         factor = round(self.z_info['offset'] / disparity_difference, 4)
         self.settings['calibration_factor'] = factor
