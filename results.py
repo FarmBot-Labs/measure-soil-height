@@ -56,7 +56,8 @@ class Results():
             }
             self.tools.app.post('points', soil_height_point)
             self.saved['points'].append(soil_height_point)
-        self.log.log(f'Soil height saved: {soil_z}', 'success', ['toast'])
+        self.log.log(f'Soil height saved: {soil_z}',
+                     log_type='success', channels=['toast'])
 
     def save_image(self, name, image):
         'Save image.'

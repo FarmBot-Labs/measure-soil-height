@@ -110,11 +110,11 @@ class Images():
     def _get_z_info(self):
         left = self.input['left'][0].info
         image_z = (left.get('location', {}) or {}).get('z')
-        initial_position = self.settings['initial_position']
-        initial_z = initial_position.get('z', 0)
+        initial_z = self.settings['initial_position'].get('z', 0)
         current_z = float(image_z or initial_z)
-        self.log.debug(f'{left.get("location")} {initial_position}')
         return {
+            'image': image_z,
+            'calibration': self.settings['calibration_measured_at_z'],
             'offset': self.settings['calibration_measured_at_z'] - current_z,
             'direction': -1 if self.settings['negative_z'] else 1,
             'current': current_z,

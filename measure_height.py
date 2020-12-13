@@ -25,7 +25,7 @@ class MeasureSoilHeight():
         self.device = self.core.device
         self.cv = cv
         self.images = []
-        self.expected_position = self.settings['initial_position']
+        self.expected_position = None
 
     def capture(self, port, timestamp, stereo_id):
         'Capture image with camera.'
@@ -33,7 +33,7 @@ class MeasureSoilHeight():
         settings = self.settings
         camera.set(self.cv.CAP_PROP_FRAME_WIDTH, settings['capture_width'])
         camera.set(self.cv.CAP_PROP_FRAME_HEIGHT, settings['capture_height'])
-        for _ in range(10):
+        for _ in range(self.settings['frame_discard_count']):
             camera.grab()
             sleep(0.1)
         ret, image = camera.read()
@@ -42,7 +42,7 @@ class MeasureSoilHeight():
         location = self.device.get_current_position()
         if self.settings['assume_target_reached']:
             location = copy(self.expected_position)
-        self.log.debug(f'{timestamp} {location}')
+        self.log.debug(f'Image captured at {timestamp} {location}')
         if self.settings['capture_only']:
             self.results.save_image(f'{stereo_id}_{timestamp}', image)
         return {'data': image, 'tag': stereo_id,
@@ -70,6 +70,7 @@ class MeasureSoilHeight():
             image_order = image_order[::-1]
         speed = self.settings['movement_speed_percent']
         to_start = {'x': 0, 'y': 0, 'z': 0}
+        self.expected_position = copy(self.settings['initial_position'])
 
         flip = True
         for i in range(sets):

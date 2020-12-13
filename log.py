@@ -39,7 +39,8 @@ class Log():
         'Log a message.'
         if self.settings['log_verbosity'] > 0 or kwargs.get('error', False):
             message = self._add_elapsed_time(message, kwargs.get('log_time'))
-            self.device.log(message, log_type, channels)
+            self.device.log(message, message_type=log_type,
+                            channels=channels)
             self.sent.append({
                 'message': message,
                 'type': log_type,
@@ -61,7 +62,8 @@ class Log():
     def debug(self, message, log_time=None, verbosity=3):
         'Send error message.'
         if self.settings['log_verbosity'] >= verbosity:
-            self.log(f'{PREFIX} {message}', 'debug', log_time=log_time)
+            self.log(f'{PREFIX} {message}',
+                     log_type='debug', log_time=log_time)
         elif self.settings['log_verbosity'] > 0:
             print(message)
 

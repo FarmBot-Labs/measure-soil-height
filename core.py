@@ -62,7 +62,7 @@ class Device():
         if quiet:
             self.get_bot_state = lambda: {}
             self.get_current_position = lambda: {}
-            self.log = lambda msg, type, channels: print(msg)
+            self.log = lambda msg, **_kwargs: print(msg)
             self.move_relative = lambda **kwargs: print(kwargs)
             self.write_pin = lambda **kwargs: print(kwargs)
 

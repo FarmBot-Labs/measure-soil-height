@@ -12,6 +12,7 @@ DEFAULTS = {
     'camera_port': 0,
     'reverse_image_order': False,
     'repeat_capture_delay_s': 3,
+    'frame_discard_count': 10,
     'stereo_y': 10,
     'set_offset_mm': 50,
     'assume_target_reached': False,
@@ -126,14 +127,10 @@ class Settings():
         firmware_params = device.get_bot_state().get('mcu_params', {})
         self.settings['negative_z'] = firmware_params.get(
             'movement_home_up_z', 1)
-        self.settings['initial_position'] = {}
-        position = device.get_current_position()
-        if position is not None and position.get('x') is not None:
-            self.settings['initial_position'] = {
-                'x': float(position.get('x')),
-                'y': float(position.get('y')),
-                'z': float(position.get('z')),
-            }
+        loc = device.get_current_position()
+        position = {axis: float(loc.get(axis)) for axis in ['x', 'y', 'z']
+                    if loc is not None and loc.get(axis) is not None}
+        self.settings['initial_position'] = position
 
     def get_image_settings(self):
         'Set image output settings.'
