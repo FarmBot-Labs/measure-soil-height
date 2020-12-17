@@ -57,12 +57,14 @@ class Device():
         self.get_bot_state = device.get_bot_state
         self.get_current_position = device.get_current_position
         self.log = device.log
+        self.read_status = device.read_status
         self.move_relative = device.move_relative
         self.write_pin = device.write_pin
         if quiet:
             self.get_bot_state = lambda: {}
             self.get_current_position = lambda: {}
             self.log = lambda msg, **_kwargs: print(msg)
+            self.read_status = lambda: None
             self.move_relative = lambda **kwargs: print(kwargs)
             self.write_pin = lambda **kwargs: print(kwargs)
 

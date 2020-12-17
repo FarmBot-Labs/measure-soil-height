@@ -27,24 +27,31 @@ class MeasureSoilHeight():
         self.images = []
         self.expected_position = None
 
-    def capture(self, port, timestamp, stereo_id):
+    def capture(self, port, timestamp, stereo_id, k=None):
         'Capture image with camera.'
         camera = self.cv.VideoCapture(port)
         settings = self.settings
         camera.set(self.cv.CAP_PROP_FRAME_WIDTH, settings['capture_width'])
         camera.set(self.cv.CAP_PROP_FRAME_HEIGHT, settings['capture_height'])
-        for _ in range(self.settings['frame_discard_count']):
+        for _ in range(settings['frame_discard_count']):
             camera.grab()
             sleep(0.1)
         ret, image = camera.read()
         if not ret:
             self.log.error('Problem getting image.')
+        self.device.read_status()
+        sleep(settings['read_position_delay'])
         location = self.device.get_current_position()
-        if self.settings['assume_target_reached']:
+        if settings['assume_target_reached']:
             location = copy(self.expected_position)
         self.log.debug(f'Image captured at {timestamp} {location}')
-        if self.settings['capture_only']:
-            self.results.save_image(f'{stereo_id}_{timestamp}', image)
+        image_save_option = self.core.settings.images
+        single = stereo_id == 'left' and image_save_option['single_input']
+        if settings['capture_only'] or single or image_save_option['inputs']:
+            if self.settings['capture_count_at_each_location'] == 1:
+                k = None
+            id_ = f'_{k}' if k is not None else ''
+            self.results.save_image(f'{stereo_id}_{timestamp}_{id_}', image)
         return {'data': image, 'tag': stereo_id,
                 'name': timestamp, 'location': location}
 
@@ -52,9 +59,9 @@ class MeasureSoilHeight():
         'Capture images at position.'
         self.log.debug(f'Capturing {stereo_id} image...', verbosity=2)
         port = int(self.settings['camera_port'])
-        for _ in range(self.settings['capture_count_at_each_location']):
+        for k in range(self.settings['capture_count_at_each_location']):
             sleep(self.settings['repeat_capture_delay_s'])
-            capture_data = self.capture(port, timestamp, stereo_id)
+            capture_data = self.capture(port, timestamp, stereo_id, k)
             self.images[i][stereo_id].append(capture_data)
 
     def capture_images(self):

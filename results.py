@@ -20,19 +20,22 @@ class Results():
             'logs': self.log.sent, 'fbos_config': [],
         }
 
+    def save_config(self, key):
+        'Save config value.'
+        farmware_name = self.settings['farmware_name']
+        farmware_name_lower = farmware_name.lower().replace(' ', '_')
+        value = self.settings[key]
+        self.tools.set_config_value(farmware_name, key, value)
+        self.saved['farmware_env'].append({
+            'key': f'{farmware_name_lower}_{key}',
+            'value': value,
+        })
+
     def save_calibration(self):
         'Save calculated calibration results.'
-        farmware_name = self.settings['farmware_name']
-        configs = {}
-        for key in [k for k in self.settings if k.startswith('calibration_')]:
-            configs[key] = self.settings[key]
-        farmware_name_lower = farmware_name.lower().replace(' ', '_')
-        for key, value in configs.items():
-            self.tools.set_config_value(farmware_name, key, value)
-            self.saved['farmware_env'].append({
-                'key': f'{farmware_name_lower}_{key}',
-                'value': value,
-            })
+        keys = [k for k in self.settings if k.startswith('calibration_')]
+        for key in keys:
+            self.save_config(key)
 
     def save_soil_height(self, soil_z):
         'Save soil height.'

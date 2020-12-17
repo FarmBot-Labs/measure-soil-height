@@ -4,6 +4,7 @@
 
 import os
 import json
+from time import sleep
 
 DEFAULTS = {
     'input_coverage_threshold': 5,
@@ -12,20 +13,20 @@ DEFAULTS = {
     'camera_port': 0,
     'reverse_image_order': False,
     'repeat_capture_delay_s': 3,
+    'read_position_delay': 0.5,
     'frame_discard_count': 10,
     'stereo_y': 10,
     'set_offset_mm': 50,
     'assume_target_reached': False,
     'number_of_stereo_sets': 2,
     'force_sets': False,
-    'movement_speed_percent': 50,
+    'movement_speed_percent': 100,
     'blur': 0,
     'use_plant_color_mask': True,
     'soil_height_point_radius': 0,
     'edit_fbos_config': False,
     'save_point': True,
     'capture_count_at_each_location': 1,
-    'disparity_search_depth': 1,
     'image_blend_percent': 50,
     'wide_sigma_threshold': 10,
     'selection_width': 3,
@@ -54,6 +55,7 @@ STRINGS = [
 FLOATS = [
     'disparity_percent_threshold',
     'delta_value_threshold',
+    'read_position_delay',
 ]
 
 with open('manifest.json', 'r') as manifest_file:
@@ -127,6 +129,8 @@ class Settings():
         firmware_params = device.get_bot_state().get('mcu_params', {})
         self.settings['negative_z'] = firmware_params.get(
             'movement_home_up_z', 1)
+        device.read_status()
+        sleep(self.settings['read_position_delay'])
         loc = device.get_current_position()
         position = {axis: float(loc.get(axis)) for axis in ['x', 'y', 'z']
                     if loc is not None and loc.get(axis) is not None}
@@ -136,12 +140,13 @@ class Settings():
         'Set image output settings.'
         img_verbosity = self.settings['verbose']
         return {
+            'single_input': img_verbosity == 1,
             'output_enabled': img_verbosity > 1,
             'plot': img_verbosity > 1,
             'depth_color': img_verbosity > 4 or img_verbosity == 2,
             'depth_blend': img_verbosity > 5 or img_verbosity == 2,
             'depth_bw': img_verbosity > 5 or img_verbosity == 3,
-            'input': img_verbosity > 3 and img_verbosity != 5,
+            'inputs': img_verbosity > 3 and img_verbosity != 5,
             'collage': img_verbosity > 4,
             'multi_depth': img_verbosity > 5,
             'histograms': img_verbosity > 5,

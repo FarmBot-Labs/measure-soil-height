@@ -16,17 +16,18 @@ class SerialDevice():
         baud = settings['serial_baud_rate']
         self.serial = serial.Serial(port, baud)
         self.buffer = b''
+        self.get(['ARDUINO STARTUP COMPLETE'])
         self.speed = {}
         self.get_speeds()
-        if settings['serial_negative_z']:
+        if settings['serial_z_negative']:
             self.send('F22 P53 V1')
         if settings['serial_reset_position']:
             self.send('F84 X1 Y1 Z1')
         self.validate_params()
 
-    def log(self, message, _log_type='info', _channels=None, verbosity=2):
+    def log(self, message, **kwargs):
         'Print a message.'
-        if self.verbosity >= verbosity:
+        if self.verbosity >= kwargs.get('verbosity', 2):
             print(message)
 
     def send(self, command, wait_for_response=True):
@@ -81,6 +82,10 @@ class SerialDevice():
         'Wait for idle response.'
         self.log('Waiting for idle...')
         self.get(['R00'])
+
+    @staticmethod
+    def read_status():
+        'Read status.'
 
     def get_current_position(self):
         'Get current device coordinates.'

@@ -67,11 +67,13 @@ def test_calibration():
     assert logs == [_result_log(-99)], logs
     envs = measure_soil.core.results.tools.config_history
     assert envs == [
+        ['disparity_search_depth', 2],
         ['calibration_factor', 0.3147],
         ['calibration_disparity_offset', 159.78125],
         ['calibration_image_width', 100],
         ['calibration_image_height', 100],
         ['calibration_measured_at_z', 0.0],
+        ['calibration_maximum', 164],
     ], envs
     posts = measure_soil.core.results.tools.post_history
     assert posts == [['points', _point(-99)]], posts
@@ -134,7 +136,7 @@ def test_measure_soil_height():
          'kwargs': {'message_type': 'debug', 'channels': None}},
     ], logs
     envs = measure_soil.core.results.tools.config_history
-    assert envs == [], envs
+    assert envs == [['disparity_search_depth', 2]], envs
     posts = measure_soil.core.results.tools.post_history
     assert posts == [['points', _point(-100)]], posts
     pins = measure_soil.device.pin_history
@@ -157,6 +159,9 @@ def test_calculate_multiple():
 
 
 if __name__ == '__main__':
+    if len(sys.argv) > 1 and sys.argv[1] == 'clear':
+        for filename in os.listdir('results'):
+            os.remove(f'results/{filename}')
     test_calibration()
     test_measure_soil_height()
     failure = test_calculate_multiple()

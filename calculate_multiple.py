@@ -65,6 +65,7 @@ class CalculateMultiple():
             msg += f' to {recommended_search_depth}'
             self.log.debug(msg)
             self.settings['disparity_search_depth'] = recommended_search_depth
+            self.results.save_config('disparity_search_depth')
 
     def load_images(self, image_set_data):
         'Load image sets.'

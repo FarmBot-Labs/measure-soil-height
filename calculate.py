@@ -24,19 +24,16 @@ class Calculate():
     def check_images(self):
         'Check capture images.'
         self.log.debug('Checking images...', verbosity=2)
-        for stereo_id, images in self.images.input.items():
-            for i, image in enumerate(images):
+        for images in self.images.input.values():
+            for image in images:
                 if image.image is None:
                     self.log.error('Image missing.')
-                image_id = f'{stereo_id}_{i}' if len(images) > 1 else stereo_id
                 pre_rotation_angle = self.settings['pre_rotation_angle']
                 if pre_rotation_angle:
                     image.image = rotate(image.image, pre_rotation_angle)
                 image.reduce_data()
                 content = image.data.report
                 self.log.debug(content['report'])
-                if self.imgs['input']:
-                    image.save(image_id)
                 if content['coverage'] < self.settings['input_coverage_threshold']:
                     self.log.error('Not enough detail. Check recent images.')
 
@@ -105,6 +102,9 @@ class Calculate():
         num_disparities = int(16 * self.settings['disparity_search_depth'])
         block_size_setting = int(self.settings['disparity_block_size'])
         block_size = min(max(5, odd(block_size_setting)), 255)
+        if block_size != block_size_setting:
+            self.settings['disparity_block_size'] = block_size
+            self.results.save_config('disparity_block_size')
         stereo = cv.StereoBM().create(num_disparities, block_size)
         disparities = []
         for j, left_image in enumerate(self.images.input['left']):
@@ -151,6 +151,7 @@ class Calculate():
             self.log.error('No algorithm chosen.')
 
         disparity = self.images.filter_plants(output['raw_disparity'].image)
+        disparity[-1][-1] = self.settings['calibration_maximum']
         self.images.output_init(disparity, 'disparity')
         self._check_disparity()
 
@@ -197,12 +198,15 @@ class Calculate():
             soil_z_range_text = f'Soil z range: {low_soil_z} to {high_soil_z}'
             self.log.debug(soil_z_range_text, verbosity=2)
             disparity['calculations']['lines'].append(soil_z_range_text)
-            disparity_ff = self.images.output.get('disparity_from_flow')
-            if disparity_ff is not None:
-                details_ff = disparity_ff.data.report['calculations']
-                soil_z_ff = details_ff['values']['calculated_soil_z']
-                msg = f'(alternate method would have calculated {soil_z_ff})'
-                self.log.debug(msg)
+            use_flow = self.settings['use_flow']
+            alt = 'disparity_from_stereo' if use_flow else 'disparity_from_flow'
+            disparity_alt = self.images.output.get(alt)
+            if disparity_alt is not None:
+                details_alt = disparity_alt.data.report.get('calculations')
+                if details_alt is not None:
+                    soil_z_alt = details_alt['values']['calculated_soil_z']
+                    msg = f'(alternate method would have calculated {soil_z_alt})'
+                    self.log.debug(msg)
             if missing_calibration_factor:
                 self.check_soil_z(details['values'])
             self.results.save_soil_height(soil_z)
@@ -215,9 +219,8 @@ class Calculate():
 
     def save_debug_output(self):
         'Save debug output.'
-        if self.imgs['output_enabled']:
-            self.images.save()
-
+        self.images.save()
+        self.images.save_data()
         self.results.save_report(self.images)
 
     def check_soil_z(self, values):
@@ -242,13 +245,14 @@ class Calculate():
     def set_disparity_offset(self):
         'Set disparity offset.'
         self.log.debug('Saving disparity offset...')
-        disparity = self.images.output['disparity'].data.report['mid']
-        self.settings['calibration_disparity_offset'] = disparity
+        disparity = self.images.output['disparity'].data
+        self.settings['calibration_disparity_offset'] = disparity.report['mid']
         self.log.debug(f'z: {self.z_info}')
         self.settings['calibration_measured_at_z'] = self.z_info['current']
         img_size = shape(self.images.input['left'][0].image)
         self.settings['calibration_image_width'] = img_size['width']
         self.settings['calibration_image_height'] = img_size['height']
+        self.settings['calibration_maximum'] = int(disparity.data.max())
 
     def set_calibration_factor(self):
         'Set calibration_factor.'

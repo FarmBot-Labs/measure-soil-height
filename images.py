@@ -160,6 +160,8 @@ class Images():
 
     def save(self):
         'Save un-rotated depth maps and histograms according to verbosity setting.'
+        if not self.imgs['output_enabled']:
+            return
         self.log.debug('Saving output images...', verbosity=2)
         images = self.output
         images['depth'] = self.init_img(images['disparity'].image)
@@ -254,3 +256,23 @@ class Images():
         if self.imgs['depth_blend']:
             images['depth_blend'].add_soil_z_annotation(soil_z)
             images['depth_blend'].save(f'{z_prefix}depth_map')
+
+    def save_data(self):
+        'Save depth and color data according to verbosity setting.'
+        if self.core.settings.reports_enabled():
+            directory = self.settings['images_dir']
+            title = self.core.settings.title
+            with open(f'{directory}/{title}data.npz', 'wb') as data_file:
+                depth = self.output['raw_disparity']
+                if self.rotated:
+                    depth_data = depth.rotate_copy(direction=-1)
+                else:
+                    depth_data = depth.image
+                data = {
+                    'depth': depth_data,
+                    'color': self.input['left'][0].image,
+                    'location': self.input['left'][0].info.get('location'),
+                    'angle': self.angle,
+                    'method': 'flow' if self.settings['use_flow'] else 'stereo',
+                }
+                np.savez(data_file, **data)

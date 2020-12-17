@@ -21,6 +21,10 @@ class MockDevice():
         self.log_history.append(log_args)
         print(message)
 
+    @staticmethod
+    def read_status():
+        'Read status.'
+
     def get_current_position(self):
         'Get current device coordinates.'
         if self.stale:

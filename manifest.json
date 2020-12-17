@@ -4,7 +4,7 @@
   "author": "FarmBot, Inc.",
   "description": "Measure soil z height at the current position.",
   "farmware_manifest_version": "2.0.0",
-  "package_version": "1.4.2",
+  "package_version": "1.4.3",
   "farmbot_os_version_requirement": ">=8.0.0",
   "url": "https://raw.githubusercontent.com/FarmBot-Labs/measure-soil-height/main/manifest.json",
   "zip": "https://github.com/FarmBot-Labs/measure-soil-height/archive/main.zip",
@@ -17,43 +17,53 @@
       "value": 0
     },
     "1": {
-      "name": "disparity_block_size",
-      "label": "Disparity block size (odd, 5 - 255)",
-      "value": 15
-    },
-    "2": {
-      "name": "verbose",
-      "label": "Image output option (0-1: none, 2: colorized depth, 3: grayscale depth, 4: input, 5: collage)",
-      "value": 2
-    },
-    "3": {
-      "name": "log_verbosity",
-      "label": "Log verbosity (0: none, 1: result toast, 2: debug logs)",
+      "name": "disparity_search_depth",
+      "label": "Disparity search depth",
       "value": 1
     },
+    "2": {
+      "name": "disparity_block_size",
+      "label": "Disparity block size",
+      "value": 15
+    },
+    "3": {
+      "name": "verbose",
+      "label": "Image output",
+      "value": 2
+    },
     "4": {
+      "name": "log_verbosity",
+      "label": "Log verbosity",
+      "value": 1
+    },
+    "5": {
       "name": "calibration_factor",
       "label": "Calibration factor result",
       "value": 0
     },
-    "5": {
+    "6": {
       "name": "calibration_disparity_offset",
       "label": "Calibration offset result",
       "value": 0
     },
-    "6": {
+    "7": {
       "name": "calibration_image_width",
       "label": "Image width during calibration",
       "value": 0
     },
-    "7": {
+    "8": {
       "name": "calibration_image_height",
       "label": "Image height during calibration",
       "value": 0
     },
-    "8": {
+    "9": {
       "name": "calibration_measured_at_z",
       "label": "Z-axis position during calibration",
+      "value": 0
+    },
+    "10": {
+      "name": "calibration_maximum",
+      "label": "Calibration maximum",
       "value": 0
     }
   }
