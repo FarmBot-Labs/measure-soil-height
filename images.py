@@ -259,20 +259,21 @@ class Images():
 
     def save_data(self):
         'Save depth and color data according to verbosity setting.'
-        if self.core.settings.reports_enabled():
-            directory = self.settings['images_dir']
-            title = self.core.settings.title
-            with open(f'{directory}/{title}data.npz', 'wb') as data_file:
-                depth = self.output['raw_disparity']
-                if self.rotated:
-                    depth_data = depth.rotate_copy(direction=-1)
-                else:
-                    depth_data = depth.image
-                data = {
-                    'depth': depth_data,
-                    'color': self.input['left'][0].image,
-                    'location': self.input['left'][0].info.get('location'),
-                    'angle': self.angle,
-                    'method': 'flow' if self.settings['use_flow'] else 'stereo',
-                }
-                np.savez(data_file, **data)
+        if not self.core.settings.reports_enabled():
+            return
+        data = {
+            'depth': (self.output['raw_disparity'].rotate_copy(direction=-1)
+                      if self.rotated else self.output['raw_disparity'].image),
+            'color': self.input['left'][0].image,
+            'location': self.input['left'][0].info.get('location'),
+            'angle': self.angle,
+            'chosen_depth': self.output['disparity'].data.report['mid'],
+            'calibration': {k: v for k, v in self.settings.items()
+                            if k.startswith('calibration_')
+                            or k == 'measured_distance'},
+            'mm_per_pixel': self.settings['millimeters_per_pixel'],
+        }
+        directory = self.settings['images_dir']
+        filename = f'{directory}/{self.core.settings.title}data.npz'
+        with open(filename, 'wb') as data_file:
+            np.savez(data_file, **data)

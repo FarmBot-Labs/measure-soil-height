@@ -63,6 +63,7 @@ def generate_inputs(tests_path):
         input_file.write(json.dumps(inputs, indent=2))
     inputs['settings']['pre_rotation_angle'] = 25
     inputs['images'] = [[_test_img('soil_surface')]]
+    inputs['images'][0][0]['location']['y'] = 1000
     with open(f'{tests_path("data")}/rotation.json', 'w') as input_file:
         input_file.write(json.dumps(inputs, indent=2))
     del inputs['settings']['pre_rotation_angle']
@@ -83,6 +84,7 @@ def assemble_results(test_images, set_results):
         location['assert'] = test_images[i].get('assert')
         location['angle'] = results.get('angle')
         location['duration'] = results.get('duration')
+        location['data_file'] = f"{results.get('title', '')}data.npz"
     return locations
 
 
@@ -98,11 +100,14 @@ def print_result_table_row(soil):
     print(result_string)
 
 
+SUMMARY_KEYS = ['z', 'error', 'angle', 'duration']
+
+
 def average_results(results):
     'Calculate result averages.'
     averages = {}
     for key, data in results.items():
-        if key == 'name':
+        if key not in SUMMARY_KEYS + ['result_ok', 'error_message']:
             continue
         data = np.array([d for d in data if d is not None])
         precision = 2 if key == 'duration' else 0
@@ -136,7 +141,7 @@ def print_ordered_values(results, combined=False):
     else:
         print('ordered values:')
     for key, result in results.items():
-        if key in ['x', 'y', 'assert', 'result_ok', 'error_message', 'name']:
+        if key not in SUMMARY_KEYS:
             continue
         data = np.array([d for d in result if d is not None])
         if len(data) < 1:
@@ -146,7 +151,7 @@ def print_ordered_values(results, combined=False):
         if combined:
             if key == 'error':
                 avg = f'{np.abs(data).mean():<8.2f}'
-                label = f'{key} (abs)'
+                label += ' (abs)'
             else:
                 avg = f'{data.mean():<8.2f}'
         print(f'  {label:<10} {avg:^15} {sorted(list(data.round(2)))}')
@@ -275,6 +280,8 @@ class TestRunner():
         print_title('results'.upper())
         for title, results_sets in self.output.items():
             print_subtitle(title)
+            if len(results_sets) < 1:
+                continue
             ang = '' if len([a for a in get_flat_results(results_sets)['angle']
                              if a is not None]) < 1 else 'angle'
             print(f"{'soil z':>9}  {'time':^5}{ang:>9}{'error':>8}  {'status':<9}")
@@ -299,6 +306,8 @@ class TestRunner():
         print()
         flat_output = self.get_flat_output()
         for title, result_sets in self.output.items():
+            if len(result_sets) < 1:
+                continue
             flat_results = get_flat_results(result_sets)
             status = status_str(all(flat_results['result_ok']))
             print(f'{title}: {status}')

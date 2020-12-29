@@ -83,6 +83,7 @@ class MeasureSoilHeight():
         for i in range(sets):
             self.images.append({'left': [], 'right': []})
             timestamp = str(int(time()))
+            self.core.settings.title = f'{timestamp}_'
 
             if i > 0:
                 z_direction = -1 if self.settings['negative_z'] else 1

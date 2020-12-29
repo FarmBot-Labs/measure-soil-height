@@ -17,10 +17,15 @@ def _result_log(soil_z):
     return {
         'message': f'Soil height saved: {soil_z}',
         'args': (),
-        'kwargs': {
-            'message_type': 'success',
-            'channels': ['toast'],
-        },
+        'kwargs': {'message_type': 'success', 'channels': ['toast']},
+    }
+
+
+def _debug_log(message):
+    return {
+        'message': message,
+        'args': (),
+        'kwargs': {'message_type': 'debug', 'channels': None},
     }
 
 
@@ -43,6 +48,7 @@ def _point(soil_z):
 def test_calibration():
     'Test MeasureSoilHeight calibration.'
     print_title('MeasureSoilHeight calibration', char='|')
+    os.environ.clear()
     os.environ['measure_soil_height_measured_distance'] = '100'
     os.environ['measure_soil_height_repeat_capture_delay_s'] = '0'
     os.environ['measure_soil_height_verbose'] = '5'
@@ -86,6 +92,7 @@ def test_calibration():
 def test_measure_soil_height():
     'Test MeasureSoilHeight.'
     print_title('MeasureSoilHeight', char='|')
+    os.environ.clear()
     os.environ['measure_soil_height_measured_distance'] = '100'
     os.environ['measure_soil_height_calibration_factor'] = '1'
     os.environ['measure_soil_height_calibration_disparity_offset'] = '160'
@@ -109,31 +116,15 @@ def test_measure_soil_height():
     ], coords
     logs = measure_soil.log.device.log_history
     assert logs == [
-        {'message': '[Measure Soil Height] Capturing left image...',
-         'args': (),
-         'kwargs': {'message_type': 'debug', 'channels': None}},
-        {'message': '[Measure Soil Height] Capturing right image...',
-         'args': (),
-         'kwargs': {'message_type': 'debug', 'channels': None}},
-        {'message': '[Measure Soil Height] Returning to starting position...',
-         'args': (),
-         'kwargs': {'message_type': 'debug', 'channels': None}},
-        {'message': '[Measure Soil Height] Checking images...',
-         'args': (),
-         'kwargs': {'message_type': 'debug', 'channels': None}},
-        {'message': '[Measure Soil Height] Checking image angle...',
-         'args': (),
-         'kwargs': {'message_type': 'debug', 'channels': None}},
-        {'message': '[Measure Soil Height] Calculating disparity...',
-         'args': (),
-         'kwargs': {'message_type': 'debug', 'channels': None}},
-        {'message': '[Measure Soil Height] Soil z range: -102 to -98',
-         'args': (),
-         'kwargs': {'message_type': 'debug', 'channels': None}},
+        _debug_log('[Measure Soil Height] Capturing left image...'),
+        _debug_log('[Measure Soil Height] Capturing right image...'),
+        _debug_log('[Measure Soil Height] Returning to starting position...'),
+        _debug_log('[Measure Soil Height] Checking images...'),
+        _debug_log('[Measure Soil Height] Checking image angle...'),
+        _debug_log('[Measure Soil Height] Calculating disparity...'),
+        _debug_log('[Measure Soil Height] Soil z range: -102 to -98'),
         _result_log(-100),
-        {'message': '[Measure Soil Height] Saving output images...',
-         'args': (),
-         'kwargs': {'message_type': 'debug', 'channels': None}},
+        _debug_log('[Measure Soil Height] Saving output images...'),
     ], logs
     envs = measure_soil.core.results.tools.config_history
     assert envs == [['disparity_search_depth', 2]], envs
@@ -145,6 +136,26 @@ def test_measure_soil_height():
     assert count == 22, count
     params = measure_soil.cv.parameter_history
     assert params == {'width': 640, 'height': 480}, params
+
+
+def test_measure_soil_height_serial(distance):
+    'Test MeasureSoilHeight over serial.'
+    print_title('MeasureSoilHeight serial', char='|')
+    os.environ.clear()
+    os.environ['measure_soil_height_measured_distance'] = distance
+    os.environ['measure_soil_height_repeat_capture_delay_s'] = '0'
+    os.environ['measure_soil_height_verbose'] = '5'
+    os.environ['measure_soil_height_log_verbosity'] = '9'
+    os.environ['measure_soil_height_use_serial'] = '1'
+    os.environ['measure_soil_height_use_lights'] = '1'
+    os.environ['measure_soil_height_save_reports'] = '1'
+    measure_soil = MeasureSoilHeight()
+    measure_soil.capture_images()
+    measure_soil.calculate()
+    input('Calibration complete. Ready for measurement?')
+    measure_soil.images = []
+    measure_soil.capture_images()
+    measure_soil.calculate()
 
 
 def test_calculate_multiple():
@@ -159,9 +170,14 @@ def test_calculate_multiple():
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1 and sys.argv[1] == 'clear':
+    if 'clear' in sys.argv:
         for filename in os.listdir('results'):
             os.remove(f'results/{filename}')
+    if 'serial' in sys.argv:
+        index = sys.argv.index('serial') + 1
+        measured_distance = sys.argv[index] if len(sys.argv) > index else '100'
+        test_measure_soil_height_serial(measured_distance)
+        sys.exit(0)
     test_calibration()
     test_measure_soil_height()
     failure = test_calculate_multiple()

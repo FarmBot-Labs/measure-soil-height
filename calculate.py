@@ -211,6 +211,8 @@ class Calculate():
                 self.check_soil_z(details['values'])
             self.results.save_soil_height(soil_z)
 
+        details['title'] = self.images.core.settings.title
+        details['method'] = 'flow' if self.settings['use_flow'] else 'stereo'
         details['angle'] = self.calculated_angle
 
         self.save_debug_output()

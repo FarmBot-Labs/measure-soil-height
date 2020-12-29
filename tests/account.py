@@ -30,6 +30,8 @@ def get_input_value(key):
 
 def get_token():
     'Fetch account token.'
+    token = os.getenv('API_TOKEN')
+    server = os.getenv('API_SERVER')
     if len(sys.argv) > 2:
         token_string = sys.argv[2]
         token_json = json.loads(token_string)
@@ -37,7 +39,8 @@ def get_token():
         server_base, port = iss.split(':')
         server = f"http{'s' if port == 443 else ''}:{server_base}:{port}"
         token = token_json['token']['encoded']
-    else:
+    elif token is None or server is None:
+        print('FarmBot Web App account login:')
         server = get_input_value('server')
         email = get_input_value('email')
         password = getpass.getpass('password: ')
@@ -47,6 +50,8 @@ def get_token():
         response = requests.post(url, headers=token_headers, json=user)
         response.raise_for_status()
         token = response.json()['token']['encoded']
+    os.environ['API_TOKEN'] = token
+    os.environ['API_SERVER'] = server
     api_headers = {'Authorization': f'Bearer {token}',
                    'content-type': 'application/json'}
     return server, api_headers
@@ -82,20 +87,27 @@ def check_image_match(img_a, img_b, offset=10):
     return all([x_match, y_match or y_offset_match, z_match])
 
 
-def generate_inputs():
+CALIBRATION_KEYS = [
+    'measured_distance',
+    'calibration_factor',
+    'calibration_disparity_offset',
+]
+
+
+def generate_inputs(min_id=None, run_name=None, settings=None):
     'Convert image endpoint records to inputs.'
     server, headers = get_token()
     inputs = {}
-    measured_distance = float(get_input_value('measured distance'))
-    inputs['settings'] = {
-        'measured_distance': measured_distance,
-        'calibration_factor': float(get_input_value('calibration factor')),
-        'calibration_disparity_offset': float(get_input_value('disparity offset')),
-    }
+    if settings is None:
+        settings = {}
+    inputs['settings'] = {k: float(
+        get_input_value(k) if settings.get(k) is None else settings.get(k))
+        for k in CALIBRATION_KEYS}
     inputs['images'] = []
     images = get_image_records(server, headers)
     for i, image in enumerate(images):
-        if i == 0:
+        id_in_range = min_id is None or image['id'] > min_id
+        if i == 0 or not id_in_range:
             continue
         prev_img = images[i - 1]
         if check_image_match(image, prev_img):
@@ -105,28 +117,33 @@ def generate_inputs():
                           'location': matched[0]['meta']}],
                 'right': [{'url': matched[1]['attachment_url'],
                            'location': matched[1]['meta']}],
-                'expected': -measured_distance}])
+                'expected': -float(inputs['settings']['measured_distance'])}])
     device_id = images[-1]['device_id']
     server_label = server.split('//')[1][:2]
     data_path = path('data')
     if not os.path.exists(data_path):
         os.makedirs(data_path)
-    filename = f'{data_path}/{server_label}_device_{device_id}.json'
+    run_str = f'_{run_name}' if run_name is not None else ''
+    filename = f'{data_path}/{server_label}_device_{device_id}{run_str}.json'
     with open(filename, 'w') as input_file:
         input_file.write(json.dumps(inputs, indent=2))
+    return filename
 
 
-def load_points():
+def load_points(filename=None):
     'Load points from output file.'
-    filename = get_input_value('points filename')
+    if filename is None:
+        filename = get_input_value('points filename')
+    else:
+        filename = f'tests/output/output_{filename}'
     with open(filename, 'r') as points_file:
         points = json.load(points_file)
     return np.hstack(points)
 
 
-def upload_points():
+def upload_points(filename=None):
     'Upload points to account.'
-    points = load_points()
+    points = load_points(filename)
     server, headers = get_token()
     point_name = get_input_value('point name')
     color = get_input_value('point color')

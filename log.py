@@ -20,7 +20,9 @@ class Log():
 
     def add_pre_logs(self, pre_times):
         'Add logs created before init.'
-        self.start_time = pre_times['start']
+        self.start_time = pre_times.get('start')
+        if self.start_time is None:
+            self.start_time = time()
         times = pre_times.copy()
         for key, log_time in times.items():
             messages = {
@@ -37,7 +39,7 @@ class Log():
 
     def log(self, message, log_type=None, channels=None, **kwargs):
         'Log a message.'
-        if self.settings['log_verbosity'] > 0 or kwargs.get('error', False):
+        if self.settings['log_verbosity'] > 0 or log_type == 'error':
             message = self._add_elapsed_time(message, kwargs.get('log_time'))
             self.device.log(message, message_type=log_type,
                             channels=channels)
@@ -69,7 +71,7 @@ class Log():
 
     def error(self, message):
         'Send error message.'
-        self.log(f'{PREFIX} {message}', 'error', error=True)
+        self.log(f'{PREFIX} {message}', 'error')
         if self.settings['exit_on_error']:
             self.errors.append(message)
             sys.exit(1)

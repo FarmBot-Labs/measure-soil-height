@@ -2,6 +2,7 @@
 
 'Serial device.'
 
+from time import time
 import serial
 from settings import Settings
 
@@ -14,7 +15,8 @@ class SerialDevice():
         self.log('Setting up serial connection...', verbosity=1)
         port = settings['serial_port']
         baud = settings['serial_baud_rate']
-        self.serial = serial.Serial(port, baud)
+        self.timeout = 10
+        self.serial = serial.Serial(port, baud, timeout=self.timeout)
         self.buffer = b''
         self.get(['ARDUINO STARTUP COMPLETE'])
         self.speed = {}
@@ -27,7 +29,8 @@ class SerialDevice():
 
     def log(self, message, **kwargs):
         'Print a message.'
-        if self.verbosity >= kwargs.get('verbosity', 2):
+        error = kwargs.get('message_type') == 'error'
+        if self.verbosity >= kwargs.get('verbosity', 2) or error:
             print(message)
 
     def send(self, command, wait_for_response=True):
@@ -49,7 +52,17 @@ class SerialDevice():
         self.log(f'Waiting for {responses}...')
         bytes_responses = [bytes(response, 'utf-8') for response in responses]
         found = False
+        start = time()
+        last_dot = start - 0.11
         while True:
+            if self.verbosity > 2:
+                since_last = time() - last_dot
+                if since_last > 0.1:
+                    print('.' * int(since_last * 10), end='', flush=True)
+                    last_dot = time()
+            if (time() - start) > self.timeout:
+                print('timeout')
+                return None
             self.buffer += self.serial.read()
             if any(self.buffer.endswith(resp) for resp in bytes_responses):
                 found = True
