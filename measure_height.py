@@ -2,6 +2,7 @@
 
 '''Measure soil z height using OpenCV and FarmBot's current position.'''
 
+import traceback
 from copy import copy
 from time import time, sleep
 TIMES = {'start': time()}
@@ -11,6 +12,8 @@ if TIMES:
     from core import Core
     from calculate_multiple import CalculateMultiple
 TIMES['imports_done'] = time()
+
+f'{"Python3.8+ required"=}'
 
 
 class MeasureSoilHeight():
@@ -121,5 +124,14 @@ class MeasureSoilHeight():
 
 if __name__ == '__main__':
     measure_soil = MeasureSoilHeight()
-    measure_soil.capture_images()
-    measure_soil.calculate()
+    try:
+        measure_soil.capture_images()
+        measure_soil.calculate()
+    except Exception as error:
+        print(traceback.print_exc())
+        msg = f'Error: {error}'
+        exc = traceback.format_exc()
+        exc = exc.replace('<', '')
+        exc = exc.replace('\n', '<br>')
+        msg += f'<details><pre>{exc}</pre></details>'
+        measure_soil.log.error(msg)

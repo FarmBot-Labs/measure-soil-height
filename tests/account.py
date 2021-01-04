@@ -11,6 +11,13 @@ import requests
 from tests import path
 
 
+def bold_text(text):
+    'Embolden text for terminal prompts.'
+    bold = '\033[1m'
+    end = '\033[0m'
+    return f'{bold}{text}{end}'
+
+
 def get_input_value(key):
     'Get and store user input.'
     account_inputs_filename = path('account_inputs.json')
@@ -21,7 +28,7 @@ def get_input_value(key):
     prev['server'] = prev.get('server', 'https://my.farm.bot')
     prev_value = prev.get(key)
     prev_value_parens = f' ({prev_value})' if prev_value is not None else ''
-    value = input(f'{key}{prev_value_parens}: ') or prev_value
+    value = input(bold_text(f'{key}{prev_value_parens}: ')) or prev_value
     prev[key] = value
     with open(account_inputs_filename, 'w') as account_inputs_file:
         account_inputs_file.write(json.dumps(prev, indent=2))
@@ -43,11 +50,15 @@ def get_token():
         print('FarmBot Web App account login:')
         server = get_input_value('server')
         email = get_input_value('email')
-        password = getpass.getpass('password: ')
+        password = getpass.getpass(bold_text(f'password: '))
         user = {'user': {'email': email, 'password': password}}
         url = f'{server}/api/tokens'
         token_headers = {'content-type': 'application/json'}
-        response = requests.post(url, headers=token_headers, json=user)
+        try:
+            response = requests.post(url, headers=token_headers, json=user)
+        except requests.exceptions.ConnectionError:
+            print('Unable to connect. Check your internet connection.')
+            sys.exit(1)
         response.raise_for_status()
         token = response.json()['token']['encoded']
     os.environ['API_TOKEN'] = token
@@ -98,11 +109,8 @@ def generate_inputs(min_id=None, run_name=None, settings=None):
     'Convert image endpoint records to inputs.'
     server, headers = get_token()
     inputs = {}
-    if settings is None:
-        settings = {}
-    inputs['settings'] = {k: float(
-        get_input_value(k) if settings.get(k) is None else settings.get(k))
-        for k in CALIBRATION_KEYS}
+    inputs['settings'] = settings or {k: float(get_input_value(k))
+                                      for k in CALIBRATION_KEYS}
     inputs['images'] = []
     images = get_image_records(server, headers)
     for i, image in enumerate(images):

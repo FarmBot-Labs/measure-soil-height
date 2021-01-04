@@ -62,6 +62,18 @@ with open('manifest.json', 'r') as manifest_file:
     manifest_configs_list = json.load(manifest_file).get('config', {}).values()
 manifest_configs = {config['name']: config for config in manifest_configs_list}
 
+HSV_INIT = {
+    'hue_min': {'key': 'WEED_DETECTOR_H_LO', 'default': '30'},
+    'hue_max': {'key': 'WEED_DETECTOR_H_HI', 'default': '90'},
+    'sat_min': {'key': 'WEED_DETECTOR_S_LO', 'default': '50'},
+    'sat_max': {'key': 'WEED_DETECTOR_S_HI', 'default': '255'},
+    'val_min': {'key': 'WEED_DETECTOR_V_LO', 'default': '50'},
+    'val_max': {'key': 'WEED_DETECTOR_V_HI', 'default': '255'},
+    'blur': {'key': 'WEED_DETECTOR_blur', 'default': '15'},
+    'morph': {'key': 'WEED_DETECTOR_morph', 'default': '6'},
+    'iterations': {'key': 'WEED_DETECTOR_iteration', 'default': '4'},
+}
+
 
 class Settings():
     'Farmware settings.'
@@ -108,17 +120,8 @@ class Settings():
         pixel_scale = float(os.getenv(pixel_scale_key, '0'))
         self.settings['millimeters_per_pixel'] = pixel_scale
 
-        self.settings['plant_hsv'] = {
-            'hue_min': int(os.getenv('WEED_DETECTOR_H_LO', '30')),
-            'hue_max': int(os.getenv('WEED_DETECTOR_H_HI', '90')),
-            'sat_min': int(os.getenv('WEED_DETECTOR_S_LO', '50')),
-            'sat_max': int(os.getenv('WEED_DETECTOR_S_HI', '255')),
-            'val_min': int(os.getenv('WEED_DETECTOR_V_LO', '50')),
-            'val_max': int(os.getenv('WEED_DETECTOR_V_HI', '255')),
-            'blur': int(os.getenv('WEED_DETECTOR_blur', '15')),
-            'morph': int(os.getenv('WEED_DETECTOR_morph', '6')),
-            'iterations': int(os.getenv('WEED_DETECTOR_iteration', '4')),
-        }
+        self.settings['plant_hsv'] = {key: int(os.getenv(d['key'], d['default']))
+                                      for key, d in HSV_INIT.items()}
 
         self.settings['images_dir'] = (
             self.tools.env.images_dir or 'results')
@@ -135,6 +138,11 @@ class Settings():
         position = {axis: float(loc.get(axis)) for axis in ['x', 'y', 'z']
                     if loc is not None and loc.get(axis) is not None}
         self.settings['initial_position'] = position
+
+    def get_plant_params(self):
+        'Return plant HSV parameters.'
+        return {key: int(self.settings['plant_hsv'].get(key, d['default']))
+                for key, d in HSV_INIT.items()}
 
     def get_image_settings(self):
         'Set image output settings.'

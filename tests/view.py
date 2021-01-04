@@ -19,9 +19,10 @@ if START:
         import numpy as np
         import cv2 as cv
         import open3d as o3d
+        from tests.account import bold_text
     except ModuleNotFoundError:
         print('Open3D package and dependencies required.')
-        print('Try `python3.8 -m pip install open3d`')
+        print('Try `python3.8 -m pip install -r tests/requirements.txt`')
         sys.exit(1)
 IMPORT_LOAD_TIME = time() - START
 
@@ -65,7 +66,7 @@ def confirm_once():
     msg = 'Depending on the amount of data, these next steps may'
     msg += ' take several minutes and gigabyes of memory and disk space.'
     msg += ' Proceed? (y/N) '
-    response = input(msg)
+    response = input(bold_text(msg))
     if 'y' not in response.lower():
         print('exiting...')
         sys.exit(0)
@@ -77,7 +78,7 @@ def get_input(key):
     previous = load_response(key)
     if 'use_previous_response' in sys.argv:
         return previous
-    input_selection_raw = input(f'{key} ({previous}): ')
+    input_selection_raw = input(bold_text(f'{key} ({previous}): '))
     input_selection = input_selection_raw.strip() or previous
     if input_selection != previous:
         update_response(key, input_selection)
@@ -255,8 +256,10 @@ class View():
                     self.settings[key] = value
         with open(self.filenames['settings'], 'w') as settings_file:
             settings_file.write(json.dumps(self.settings, indent=2))
-        self.filenames['mesh'] = self.filenames['mesh'].replace(
-            '.', '_' + str(self.settings['mesh_simplification']) + '.')
+        mesh_setting = str(self.settings['mesh_simplification'])
+        if mesh_setting not in self.filenames['mesh']:
+            self.filenames['mesh'] = self.filenames['mesh'].replace(
+                '.', f'_{mesh_setting}.')
 
     def print_status(self, next_step=None):
         'Print steps completed.'
@@ -272,7 +275,7 @@ class View():
                     duration = f'{step_data["time"]:>.1f}s'
             count = ''
             if step_data.get('count') is not None and step_data['count'] > 1:
-                count = 'x' + str(step_data['count'])
+                count = f'x{step_data["count"]}'
             active = '' if step != next_step else '>'
             label = step_data['label']
             print(f' {duration:>8} {count:<3} {active:>1} {label}')
@@ -418,11 +421,12 @@ class View():
                 start = time()
                 self.stitch()
                 duration = time() - start
-                filename = self.filenames['depth']
+                filename = self.filenames['color']
                 print(f'{filename} created in {duration:.1f} seconds.')
                 if 'use_previous_response' not in sys.argv:
-                    print('Review and edit settings as necessary.')
-                    response = input('Does it look ok? (y/N) ')
+                    settings_filename = self.filenames['settings']
+                    print(f'Review and edit {settings_filename} as necessary.')
+                    response = input(bold_text('Does it look ok? (y/N) '))
                 if 'use_previous_response' in sys.argv or 'y' in response.lower():
                     self.state['stitch_ok'] = True
                     break

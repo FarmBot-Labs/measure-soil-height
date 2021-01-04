@@ -73,7 +73,7 @@ class ProcessImage():
 
     def select_plants(self):
         'Select plants.'
-        params = self.settings['plant_hsv']
+        params = self.core.settings.get_plant_params()
         hsv_min = [params['hue_min'], params['sat_min'], params['val_min']]
         hsv_max = [params['hue_max'], params['sat_max'], params['val_max']]
         blurred = cv.medianBlur(self.image, params['blur'])

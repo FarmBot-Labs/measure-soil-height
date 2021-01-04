@@ -14,20 +14,33 @@ Steps (interactive):
 
 import os
 import sys
-from time import sleep
-from tests.account import get_token, get_input_value
-from tests.account import generate_inputs, upload_points, CALIBRATION_KEYS
+try:
+    import paho.mqtt
+except ModuleNotFoundError:
+    print('PahoMQTT package required.')
+    print('Try `python3.8 -m pip install -r tests/requirements.txt`')
+    sys.exit(1)
+from tests.account import get_token
 get_token()
 if os.getenv('API_TOKEN') is not None:
+    from time import sleep
     import farmware_tools as farmbot
     import numpy as np
     from tests.runner import TestRunner
+    from tests.account import get_input_value, generate_inputs, upload_points, CALIBRATION_KEYS, bold_text
+    from settings import HSV_INIT
 
 
-def scan():
-    'Take stereo photos of the entire garden bed.'
-    print('Photo grid:')
-    step_size = int(get_input_value('step size'))
+def prompt(message, default='y'):
+    'Request user yes/no input.'
+    yes = 'Y' if 'y' in default else 'y'
+    no = 'N' if 'n' in default else 'n'
+    proceed = input(bold_text(f'{message} ({yes}/{no}) ')) or default
+    return 'y' in proceed.lower()
+
+
+def get_grid_extents():
+    'Return axis lengths.'
     firmware_config = farmbot.app.get('firmware_config')
     web_app_config = farmbot.app.get('web_app_config')
     default_length = {'x': web_app_config.get('map_size_x', 2900),
@@ -38,10 +51,16 @@ def scan():
         spm = firmware_config.get(f'movement_step_per_mm_{axis}', 1)
         axis_length[axis] = (steps / spm) or default_length[axis]
     print(f'axis lengths (mm): {axis_length}')
-    proceed = input('Use full axis lengths? (Y/n) ') or 'y'
-    if 'y' not in proceed.lower():
+    if not prompt('Use full axis lengths?'):
         axis_length['x'] = int(get_input_value('x limit'))
         axis_length['y'] = int(get_input_value('y limit'))
+    return axis_length
+
+
+def generate_grid():
+    'Return grid based on step size and axis length.'
+    step_size = int(get_input_value('step size'))
+    axis_length = get_grid_extents()
     x, y = np.mgrid[0:axis_length['x']:step_size, 0:axis_length['y']:step_size]
     grid_locations = None
     for i, stack in enumerate(np.dstack((x, y))):
@@ -50,50 +69,84 @@ def scan():
             grid_locations = row
         else:
             grid_locations = np.vstack((grid_locations, row))
+    return grid_locations
+
+
+def scan():
+    'Take stereo photos of the entire garden bed.'
+    print('Photo grid:')
+    grid_locations = generate_grid()
     print(f'photo grid locations:\n{grid_locations}')
-    proceed = input('Proceed to each location? (Y/n) ') or 'y'
-    if 'y' in proceed.lower():
+    if prompt('Proceed to each location?'):
         for grid_x, grid_y in grid_locations:
             coordinate = farmbot.device.assemble_coordinate(
                 int(grid_x), int(grid_y), 0)
-            zero = farmbot.device.assemble_coordinate(0, 0, 0)
-            farmbot.device.move_absolute(coordinate, 100, zero)
+            farmbot.device.move_absolute(coordinate)
             sleep(1)
             farmbot.device.take_photo()
-            farmbot.device.move_relative(0, 10, 0, 100)
+            farmbot.device.move_relative(y=10)
             sleep(1)
             farmbot.device.take_photo()
             sleep(2)
-        return_home = input('Return to home? (Y/n) ') or 'y'
-        if 'y' in return_home.lower():
-            farmbot.device.move_absolute(zero, 100, zero)
+        if prompt('Return to home?'):
+            zero = farmbot.device.assemble_coordinate(0, 0, 0)
+            farmbot.device.move_absolute(zero)
 
 
-if __name__ == '__main__':
+def get_latest_image_id():
+    'Return the ID of the most recent image.'
     prev_images = farmbot.app.get('images')
-    prev_id = max([img['id'] for img in prev_images])
-    scan()
-    print('generating input data files...')
+    if isinstance(prev_images, str):
+        print('Unable to fetch Web App data.')
+        sys.exit(1)
+    return max([img['id'] for img in prev_images])
+
+
+def fetch_settings():
+    'Return env values.'
     farmware_envs = {env['key']: env['value']
                      for env in farmbot.app.get('farmware_envs')}
-    parameters = {}
-    for key in CALIBRATION_KEYS:
-        parameters[key] = farmware_envs.get(f'measure_soil_height_{key}')
-    if not all([v is not None for v in parameters.values()]):
+    settings = {}
+    for prefixed_key, value in farmware_envs.items():
+        if prefixed_key.startswith('measure_soil_height_'):
+            key = prefixed_key.split('measure_soil_height_')[1]
+            settings[key] = float(value)
+        if prefixed_key == 'CAMERA_CALIBRATION_coord_scale':
+            settings['millimeters_per_pixel'] = float(value)
+    settings['plant_hsv'] = {key: int(farmware_envs.get(d['key']))
+                             for key, d in HSV_INIT.items()
+                             if farmware_envs.get(d['key']) is not None}
+    if not all([settings[key] is not None for key in CALIBRATION_KEYS]):
         print('Calibration required.')
         sys.exit(1)
-    filepath = generate_inputs(prev_id, prev_id, parameters)
-    filename = filepath.split('/')[-1]
-    output_filename = f'output_{filename}'
+    return settings
+
+
+def run():
+    'Interactively run through all garden scanning steps.'
+    # Last image ID before scan
+    prev_id = get_latest_image_id()
+
+    scan()
+
+    print('generating input data files...')
+    env_settings = fetch_settings()
+    filename = generate_inputs(prev_id, prev_id, env_settings).split('/')[-1]
+
+    print('measuring soil height...')
     runner = TestRunner()
     runner.verbosity = 5
     runner.include = [filename]
     runner.test_data_sets()
-    response = input('View in 3D? (Y/n) ') or 'y'
-    if 'y' in response.lower():
+
+    if prompt('View in 3D?'):
         from tests.view import IMPORT_LOAD_TIME, View
-        view = View(IMPORT_LOAD_TIME, [output_filename])
+        view = View(IMPORT_LOAD_TIME, [f'output_{filename}'])
         view.run()
-    response = input('Upload points to account? (Y/n) ') or 'y'
-    if 'y' in response.lower():
+
+    if prompt('Upload points to account?'):
         upload_points(filename)
+
+
+if __name__ == '__main__':
+    run()
