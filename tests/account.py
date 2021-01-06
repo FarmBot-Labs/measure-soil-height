@@ -82,13 +82,15 @@ def check_image_match(img_a, img_b, offset=10):
         return abs(loc_a - loc_b) < 1
 
     def _is_stereo(img):
-        name = img['meta']['name']
+        name = img['meta'].get('name', '')
         return 'left' in name or 'right' in name
 
     def _both_stereo():
         return _is_stereo(img_a) and _is_stereo(img_b)
     coord_a = img_a['meta']
     coord_b = img_b['meta']
+    if coord_a.get('x') is None or coord_b.get('x') is None:
+        return False
     x_match = _match(coord_a['x'], coord_b['x'])
     y_match = _match(coord_a['y'], coord_b['y']) and _both_stereo()
     y_offset_f_match = _match(coord_a['y'], coord_b['y'] + offset)

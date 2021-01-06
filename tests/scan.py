@@ -76,12 +76,18 @@ def scan():
     'Take stereo photos of the entire garden bed.'
     print('Photo grid:')
     grid_locations = generate_grid()
+    print(f'current location: {farmbot.device.get_current_position()}')
     print(f'photo grid locations:\n{grid_locations}')
     if prompt('Proceed to each location?'):
         for grid_x, grid_y in grid_locations:
             coordinate = farmbot.device.assemble_coordinate(
                 int(grid_x), int(grid_y), 0)
             farmbot.device.move_absolute(coordinate)
+            # Use once `better_params/0 is undefined` FBOS bug is fixed
+            # with farmbot.device.Move() as movement:
+            #     movement.set_position('x', int(grid_x))
+            #     movement.set_position('y', int(grid_y))
+            #     movement.set_position('z', 0)
             sleep(1)
             farmbot.device.take_photo()
             farmbot.device.move_relative(y=10)
@@ -116,7 +122,7 @@ def fetch_settings():
     settings['plant_hsv'] = {key: int(farmware_envs.get(d['key']))
                              for key, d in HSV_INIT.items()
                              if farmware_envs.get(d['key']) is not None}
-    if not all([settings[key] is not None for key in CALIBRATION_KEYS]):
+    if not all([settings.get(key) is not None for key in CALIBRATION_KEYS]):
         print('Calibration required.')
         sys.exit(1)
     return settings
