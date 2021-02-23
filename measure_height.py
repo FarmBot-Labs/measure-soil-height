@@ -54,7 +54,7 @@ class MeasureSoilHeight():
             if self.settings['capture_count_at_each_location'] == 1:
                 k = None
             id_ = f'_{k}' if k is not None else ''
-            self.results.save_image(f'{stereo_id}_{timestamp}_{id_}', image)
+            self.results.save_image(f'{stereo_id}{id_}', image)
         return {'data': image, 'tag': stereo_id,
                 'name': timestamp, 'location': location}
 

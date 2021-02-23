@@ -98,8 +98,8 @@ EXTENSIONS = {
 
 DEFAULT_SETTINGS = {
     'every_sqrt_n_points': 4,
-    'flip': {'lr': False, 'ud': False},
-    'rotate90': False,
+    'flip': {'lr': False, 'ud': True},
+    'rotate90': True,
     'mm_per_pixel': 1,
     'blend': False,
     'normals': True,
@@ -194,6 +194,7 @@ class View():
         data_file_list = []
         files = [f for f in os.listdir(results_dir) if f.endswith('.npz')]
         data_file_list.append({'name': 'results/', 'count': len(files)})
+        data_file_list.append({'name': '[specify file]', 'count': len(files)})
         for f_name in sorted(os.listdir(data_directory)):
             data_files = _get_data_filenames(f_name)
             matches = set(data_files) & set(files)
@@ -209,6 +210,10 @@ class View():
         if data_selection == 0:
             self.title = 'results'
             files = [f for f in os.listdir(results_dir) if f.endswith('.npz')]
+        elif data_selection == 1:
+            self.title = get_input('run name')
+            files = [f for f in os.listdir(results_dir)
+                     if f.endswith('.npz') and f.startswith(self.title)]
         else:
             self.title = results_filename.split('output_')[1].split('.')[0]
             files = _get_data_filenames(results_filename)

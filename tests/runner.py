@@ -154,7 +154,7 @@ def print_ordered_values(results, combined=False):
                 label += ' (abs)'
             else:
                 avg = f'{data.mean():<8.2f}'
-        print(f'  {label:<10} {avg:^15} {sorted(list(data.round(2)))}')
+        print(f'  {label:<12} {avg:^15} {sorted(list(data.round(2)))}')
 
 
 class TestRunner():
