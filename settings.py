@@ -124,7 +124,8 @@ class Settings():
                                       for key, d in HSV_INIT.items()}
 
         self.settings['images_dir'] = (
-            self.tools.env.images_dir or 'results')
+            (self.tools.env.images_dir if self.tools is not None else None)
+            or 'results')
 
     def init_device_settings(self):
         'Load settings from device.'

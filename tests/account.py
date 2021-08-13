@@ -50,7 +50,9 @@ def get_token():
         print('FarmBot Web App account login:')
         server = get_input_value('server')
         email = get_input_value('email')
-        password = getpass.getpass(bold_text(f'password: '))
+        password = ''
+        while len(password) < 1:
+            password = getpass.getpass(bold_text(f'password: '))
         user = {'user': {'email': email, 'password': password}}
         url = f'{server}/api/tokens'
         token_headers = {'content-type': 'application/json'}

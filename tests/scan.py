@@ -2,6 +2,10 @@
 
 '''Perform a full garden scan.
 
+Prerequisites:
+ * Bot with camera set up and connected to account
+ * Measure soil height calibration complete ("calibrate" button in web app)
+
 Steps (interactive):
  * Login to account
  * Set photo grid step size
@@ -80,16 +84,15 @@ def scan():
     print(f'photo grid locations:\n{grid_locations}')
     if prompt('Proceed to each location?'):
         for grid_x, grid_y in grid_locations:
-            coordinate = farmbot.device.assemble_coordinate(
-                int(grid_x), int(grid_y), 0)
-            farmbot.device.move_absolute(coordinate)
-            # Use once `better_params/0 is undefined` FBOS bug is fixed
-            # with farmbot.device.Move() as movement:
-            #     movement.set_position('x', int(grid_x))
-            #     movement.set_position('y', int(grid_y))
-            #     movement.set_position('z', 0)
+            with farmbot.device.Move() as movement:
+                movement.set_position('x', int(grid_x))
+                movement.set_position('y', int(grid_y))
+                movement.set_position('z', 0)
+                request = movement.send()
+            wait_for_movement(request, grid_x, grid_y)
             sleep(1)
             farmbot.device.take_photo()
+            sleep(2)
             farmbot.device.move_relative(y=10)
             sleep(1)
             farmbot.device.take_photo()
@@ -97,6 +100,25 @@ def scan():
         if prompt('Return to home?'):
             zero = farmbot.device.assemble_coordinate(0, 0, 0)
             farmbot.device.move_absolute(zero)
+
+
+def wait_for_movement(request, grid_x, grid_y):
+    'Wait until target position is reached.'
+    if request.get('response') == 'no response':
+        intervals = 0
+        while intervals < 100:
+            intervals += 1
+            sleep(1)
+            position = farmbot.device.get_current_position()
+            x_ok = abs(position['x'] - grid_x) < 2
+            y_ok = abs(position['y'] - grid_y) < 2
+            target = f'target position ({grid_x}, {grid_y})'
+            if x_ok and y_ok:
+                print(f'arrived at {target}')
+                break
+            else:
+                current = f'({position["x"], position["y"]})'
+                print(f'at {current} waiting to arrive at {target}')
 
 
 def get_latest_image_id():
