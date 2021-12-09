@@ -2,7 +2,7 @@
 
 'Generate histogram.'
 
-from statistics import NormalDist
+from statistics import NormalDist, StatisticsError
 import numpy as np
 import cv2 as cv
 
@@ -198,8 +198,12 @@ class Histogram():
         if self.options['color']:
             bins = np.linspace(params['min'], params['max'], params['width'])
             norm = NormalDist(mu=self.stats['mu'], sigma=self.stats['sigma'])
-            counts = np.array([norm.pdf(b) for b in bins])
-            self.plot_bins(counts, bins, counts.max(), fill=False)
+            try:
+                counts = np.array([norm.pdf(b) for b in bins])
+            except StatisticsError:
+                pass
+            else:
+                self.plot_bins(counts, bins, counts.max(), fill=False)
         self.plot_lines()
         self.plot_text(self.params['title'], (int(params['width'] / 2), 20), 1)
 
